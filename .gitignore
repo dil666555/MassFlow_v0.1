@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.benchmarks/
 
 # Translations
 *.mo
@@ -220,3 +221,6 @@ logs/
 .TEMP/
 .trae/
 *.pdf
+*.ipynb
+*.pymon
+*.benchmark
