@@ -192,7 +192,7 @@ plot_spectrum(
     overlay=True
 )
 ```
-![SNIP example before/after (image to be added)](./assets/snip_baseline_correction_visualization_400-500.png)
+![SNIP example before/after (image to be added)]()
 
 ### asls_baseline
 ```python
