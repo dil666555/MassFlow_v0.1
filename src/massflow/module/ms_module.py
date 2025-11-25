@@ -663,6 +663,7 @@ class MS:
             bool: True if a common m/z list is used; False otherwise.
         """
         return self._shared_mz_list
+   
     @shared_mz_list.setter
     def shared_mz_list(self, value):
         if self.meta:
