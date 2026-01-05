@@ -6,9 +6,14 @@ from typing import Optional
 import numpy as np
 from scipy import stats
 from massflow.logger import get_logger
-from massflow.module.ms_module import SpectrumBaseModule
+from massflow.module.spectrum import Spectrum
+import pywt
+from scipy.spatial import cKDTree #type: ignore
+from scipy.signal import savgol_filter
+from scipy.stats import norm  
+from scipy import signal, linalg
 
-logger = get_logger(__name__)
+logger = get_logger("preprocesss")
 
 def _input_validation(
     intensity: np.ndarray,
@@ -106,14 +111,14 @@ def smooth_signal_ma(
     # Normalize kernel weights
     coef = coef.astype(float)
     coef = coef / np.sum(coef)
-    window = len(coef)
+    window = len(coef) #type: ignore
     half_window = window // 2
 
     # Boundary padding: extend using edge values
     xpad = np.pad(intensity, (half_window, half_window), mode="edge")
 
     # Convolution filtering
-    y = np.convolve(xpad, coef, mode="valid")
+    y = np.convolve(xpad, coef, mode="valid") #type: ignore
 
     return y
 
@@ -158,14 +163,8 @@ def smooth_signal_gaussian(
 
     # Create Gaussian weights centered at zero
     positions = np.arange(-half_window, half_window + 1, dtype=float)
-    try:
-        # Prefer scipy.stats.norm if available for numerical stability
-        from scipy.stats import norm  # type: ignore
 
-        coef = norm.pdf(positions, scale=sd)
-    except ImportError:
-        # Fallback to numpy-only implementation if SciPy is unavailable
-        coef = np.exp(-0.5 * (positions / sd) ** 2)
+    coef = norm.pdf(positions, scale=sd)
 
     return smooth_signal_ma(intensity, coef=coef)
 
@@ -194,7 +193,6 @@ def smooth_signal_savgol(
         np.ndarray
             Smoothed signal
     """
-    from scipy.signal import savgol_filter
 
     if window < 3:
         window = 3
@@ -230,7 +228,6 @@ def smooth_signal_wavelet(
     Raises:
         ImportError: If `pywt` is not available.
     """
-    import pywt
 
     # Validate threshold mode
     if threshold_mode not in {"soft", "hard"}:
@@ -311,8 +308,6 @@ def smooth_ns_signal_pre(
     if not isinstance(p, int):
         logger.error("p must be an integer")
         raise ValueError("p must be an integer")
-    
-    from scipy.spatial import cKDTree
 
     tree = cKDTree(index.reshape(-1, 1))
 
@@ -488,7 +483,7 @@ def smooth_ns_signal_bi(
     s_weights = s_weights / srow_sums
 
     # Intensity weights (based on neighbor intensity differences)
-    sd_intensity = stats.median_abs_deviation(intensity, nan_policy="omit", scale="normal") if sd_intensity is None else sd_intensity
+    sd_intensity = stats.median_abs_deviation(intensity, nan_policy="omit", scale="normal") if sd_intensity is None else sd_intensity #type: ignore
     if sd_intensity <= 0:
         logger.error("sd_intensity must be positive")
         raise ValueError("sd_intensity must be positive")
@@ -509,7 +504,7 @@ def smooth_ns_signal_bi(
 
     return smoothed_intensity
 
-def smooth_preprocess(data:SpectrumBaseModule):
+def smooth_preprocess(data:Spectrum):
     """
     Basic preprocessing pipeline for MS data smoothing.
 
@@ -525,6 +520,60 @@ def smooth_preprocess(data:SpectrumBaseModule):
 
     data.intensity = intensity
     return data
+
+#不对，这里没有库没，自己写的算到什么时候去了？？
+def smooth_signal_loess(intensity: np.ndarray, window: int = 11):
+    """
+    Loess smoothing (quadratic) with tri-cubic weighting only.
+
+    Parameters:
+        intensity (np.ndarray): 1D intensity array to be smoothed.
+        window (int): Local regression window size (odd, >=3). Auto-adjusted if too small/large.
+
+    Returns:
+        np.ndarray: Smoothed intensity array with the same length as input.
+    """
+    _input_validation(intensity=intensity, window=window)
+
+    if window < 3:
+        window = 3
+    if window % 2 == 0:
+        window += 1
+
+    n = len(intensity)
+    if window > n:
+        adj = n if (n % 2 == 1) else max(3, n - 1)
+        window = adj
+
+    y = np.asarray(intensity, dtype=np.float64)
+    leny = y.size
+
+    halfw = np.floor((window / 2.)).astype(int)
+    window = int(2. * halfw + 1.)
+    x1 = np.arange(1. - halfw, (halfw - 1.) + 1)
+
+    weight = (1. - np.divide(np.abs(x1), halfw) ** 3.) ** 1.5
+    V = (np.vstack((np.hstack(weight), np.hstack(weight * x1), np.hstack(weight * x1 * x1)))).transpose()
+    Q, _ = linalg.qr(V, mode='economic')
+
+    alpha = np.dot(Q[halfw - 1,], Q.transpose())
+    yhat = signal.lfilter(alpha * weight, 1, y)
+    yhat[int(halfw + 1) - 1:-halfw] = yhat[int(window - 1) - 1:-1]
+
+    x1 = np.arange(1., (window - 1.) + 1)
+    V = (np.vstack((np.hstack(np.ones([1, window - 1])), np.hstack(x1), np.hstack(x1 * x1)))).transpose()
+
+    for j in np.arange(1, (halfw) + 1):
+        weight = (1. - np.divide(np.abs((np.arange(1, window) - j)), window - j) ** 3.) ** 1.5
+        W = (np.kron(np.ones((3, 1)), weight)).transpose()
+        Q, _ = linalg.qr(V * W, mode='economic')
+
+        alpha = np.dot(Q[j - 1,], Q.transpose())
+        alpha = alpha * weight
+        yhat[int(j) - 1] = np.dot(alpha, y[:int(window) - 1])
+        yhat[int(-j)] = np.dot(alpha, y[np.arange(leny - 1, leny - window, -1, dtype=int)])
+
+    return yhat
 
 def smoother(intensity:np.ndarray,
             index:Optional[np.ndarray]=None,
@@ -592,13 +641,12 @@ def smoother(intensity:np.ndarray,
 
     elif method_norm == "ma_ns":
         _input_validation(intensity=intensity, index=index, k=window, p=p)
-        return smooth_ns_signal_ma(intensity, index=index, k=window, p=p)
+        return smooth_ns_signal_ma(intensity, index=index, k=window, p=p)#type: ignore
 
     elif method_norm == "gaussian_ns":
         _input_validation(intensity=intensity, index=index, k=window, p=p, sd=sd)
-        return smooth_ns_signal_gaussian(intensity, index=index, k=window, p=p, sd=sd)
-
+        return smooth_ns_signal_gaussian(intensity, index=index, k=window, p=p, sd=sd)#type: ignore
     else:
         # bi_ns
         _input_validation(intensity=intensity, index=index, k=window, p=p)
-        return smooth_ns_signal_bi(intensity, index=index, k=window, p=p, sd_dist=sd, sd_intensity=sd_intensity)
+        return smooth_ns_signal_bi(intensity, index=index, k=window, p=p, sd_dist=sd, sd_intensity=sd_intensity) #type: ignore
