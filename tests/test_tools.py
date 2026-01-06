@@ -5,7 +5,7 @@ logger = get_logger("test_tools")
 
 #暂时没用到
 def time_calculator(test_times=1):
-    
+
     def timer(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
