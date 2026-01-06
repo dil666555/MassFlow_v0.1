@@ -5,7 +5,7 @@ from massflow.module.mass_spectrum_set import MassSpectrumSet
 from massflow.module.spectrum import Spectrum
 from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.preprocess.spectrum_preprocess import SpectrumPreprocess
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("test_baseline")
 

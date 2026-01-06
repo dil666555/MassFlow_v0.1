@@ -3,7 +3,7 @@ import numpy as np
 from scipy.sparse import diags
 from scipy.sparse.linalg import spsolve
 
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("preprocesss")
 

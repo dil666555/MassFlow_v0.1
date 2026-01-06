@@ -1,6 +1,6 @@
 import time
 import functools
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 logger = get_logger("test_tools")
 
 #暂时没用到

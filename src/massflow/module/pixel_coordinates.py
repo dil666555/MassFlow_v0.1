@@ -1,5 +1,5 @@
 from typing import Optional,Union,Sequence
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("ms_module")
 

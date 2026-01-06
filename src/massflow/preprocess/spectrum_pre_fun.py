@@ -37,7 +37,7 @@ import numpy as np
 from massflow.module.spectrum_imzml import SpectrumImzML
 from massflow.module.spectrum import Spectrum
 from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.preprocess.helper.peak_align_helper import align_massdata, align_spectrum
 from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.preprocess.helper.filter_helper import smoother

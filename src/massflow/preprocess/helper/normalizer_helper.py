@@ -1,5 +1,5 @@
 import numpy as np
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from typing import Optional
 
 logger = get_logger("preprocesss")

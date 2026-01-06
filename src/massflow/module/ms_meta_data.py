@@ -6,7 +6,7 @@ License: See LICENSE file in project root
 import os
 from typing import Optional
 import numpy as np
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("meta_data")
 

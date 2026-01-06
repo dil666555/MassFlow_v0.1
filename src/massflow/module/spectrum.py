@@ -2,7 +2,7 @@ from typing import Union, Optional, Sequence
 import numpy as np
 from massflow.module.pixel_coordinates import PixelCoordinates
 from massflow.tools.stream_imzml_writer import ImzMLWriter
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("spectrum")
 

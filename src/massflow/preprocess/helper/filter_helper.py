@@ -10,7 +10,7 @@ from scipy.signal import savgol_filter
 from scipy.stats import norm
 from scipy import stats
 from scipy import signal, linalg
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.module.spectrum import Spectrum
 
 logger = get_logger("preprocesss")

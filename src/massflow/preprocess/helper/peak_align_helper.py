@@ -1,7 +1,7 @@
 from typing import Literal, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.module.mass_spectrum_set import MassSpectrumSet
 from massflow.module.spectrum_imzml import SpectrumImzML
 from massflow.module.ms_data_manager_imzml import MSDataManagerImzML

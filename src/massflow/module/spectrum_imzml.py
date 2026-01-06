@@ -15,7 +15,7 @@ License: See LICENSE file in project root
 from pyimzml.ImzMLParser import PortableSpectrumReader
 from massflow.module.spectrum import Spectrum
 from massflow.tools.stream_imzml_writer import ImzMLWriter
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 logger = get_logger("ms_module")
 
 class SpectrumImzML(Spectrum):

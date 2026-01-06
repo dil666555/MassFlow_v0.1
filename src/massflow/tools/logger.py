@@ -2,9 +2,10 @@ import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
+
 from colorama import init, Fore, Back, Style
 
-init(autoreset=True,strip=False)
+init(autoreset=True, strip=False)
 
 # Log level mapping
 LOG_LEVELS = {
@@ -12,13 +13,12 @@ LOG_LEVELS = {
     "info": logging.INFO,
     "warning": logging.WARNING,
     "error": logging.ERROR,
-    "critical": logging.CRITICAL
+    "critical": logging.CRITICAL,
 }
 
 
 class ColorFormatter(logging.Formatter):
-    """
-    Colorized log formatter for console output only.
+    """Colorized log formatter for console output only.
 
     Applies ANSI color codes by level and aligns multi-line messages so that
     subsequent lines keep the same prefix indentation as the first line.
@@ -34,15 +34,7 @@ class ColorFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        """
-        Format a log record with colorized level name and multi-line alignment.
-
-        Parameters:
-            record (logging.LogRecord): The log record to format.
-
-        Returns:
-            str: The formatted log line(s).
-        """
+        """Format a log record with colorized level name and multi-line alignment."""
         original_message = super().format(record)
         levelname_fixed = f"{record.levelname + ':':<10.10}"
         # get color
@@ -52,70 +44,61 @@ class ColorFormatter(logging.Formatter):
         formatted_record = original_message.replace(f"{record.levelname}", colored_level)
 
         # Multi-line alignment helper
-        if '\n' in record.message:
+        if "\n" in record.message:
             # calculate prefix length
-            first_line = formatted_record.split('\n')[0]
+            first_line = formatted_record.split("\n")[0]
             # (len(colored_level)-len(levelname_fixed)) = 10
-            prefix_length = len(first_line) - len(record.message.split('\n')[0])-10
+            prefix_length = (
+                len(first_line) - len(record.message.split("\n")[0]) - 10
+            )
             # split into sever lines
-            lines = record.message.split('\n')
+            lines = record.message.split("\n")
             # add first line
             formatted_lines = [first_line]
 
             # add prefix
             for line in lines[1:]:
-                aligned_prefix = ' ' * prefix_length
+                aligned_prefix = " " * prefix_length
                 formatted_lines.append(f"{aligned_prefix}{line}")
 
             # rebuild lines
-            formatted_record = '\n'.join(formatted_lines)
+            formatted_record = "\n".join(formatted_lines)
 
         return formatted_record
 
 
 class FileFormatter(logging.Formatter):
-    """
-    Plain file formatter with fixed-width level name and multi-line alignment.
-    """
+    """Plain file formatter with fixed-width level name and multi-line alignment."""
 
     def format(self, record):
-        """
-        Format a log record for file output with aligned multi-line messages.
-
-        Parameters:
-            record (logging.LogRecord): The log record to format.
-
-        Returns:
-            str: The formatted log line(s).
-        """
+        """Format a log record for file output with aligned multi-line messages."""
         original_message = super().format(record)
         levelname_fixed = f"{record.levelname + ':':<10.10}"
         formatted_record = original_message.replace(f"{record.levelname}", levelname_fixed)
 
         # multilines helper
-        if '\n' in record.message:
+        if "\n" in record.message:
             # calculate prefix length
-            first_line = formatted_record.split('\n')[0]
-            prefix_length = len(first_line) - len(record.message.split('\n')[0])
+            first_line = formatted_record.split("\n")[0]
+            prefix_length = len(first_line) - len(record.message.split("\n")[0])
             # split into sever lines
-            lines = record.message.split('\n')
+            lines = record.message.split("\n")
             # add first line
             formatted_lines = [first_line]
 
             # add prefix
             for line in lines[1:]:
-                aligned_prefix = ' ' * prefix_length
+                aligned_prefix = " " * prefix_length
                 formatted_lines.append(f"{aligned_prefix}{line}")
 
             # rebuild lines
-            formatted_record = '\n'.join(formatted_lines)
+            formatted_record = "\n".join(formatted_lines)
 
         return formatted_record
 
 
 class LoggerManager:
-    """
-    Logger manager to configure and provide named loggers.
+    """Logger manager to configure and provide named loggers.
 
     Creates console/file handlers, supports rotating file logs, and allows
     dynamic level updates across all managed loggers.
@@ -129,17 +112,8 @@ class LoggerManager:
         self.backup_count = 5
         self.initialized = False
 
-    def init_app(self, log_level="info", log_dir='logs'):
-        """
-        Initialize the logging system.
-
-        Parameters:
-            log_level (str): Default log level name, e.g., 'info'.
-            log_dir (str): Directory to store log files.
-
-        Returns:
-            LoggerManager: Self for chained calls.
-        """
+    def init_app(self, log_level="info", log_dir="logs"):
+        """Initialize the logging system."""
         # set logger level
         self.log_level = LOG_LEVELS.get(log_level.lower(), logging.INFO)
 
@@ -155,16 +129,7 @@ class LoggerManager:
         return self
 
     def _configure_logger(self, logger, name):
-        """
-        Configure a named logger with console and rotating file handlers.
-
-        Parameters:
-            logger (logging.Logger): Logger instance to configure.
-            name (str): Logical name used to title the log file.
-
-        Returns:
-            logging.Logger: The configured logger instance.
-        """
+        """Configure a named logger with console and rotating file handlers."""
         # Avoid adding duplicate handlers
         if logger.handlers:
             return logger
@@ -179,8 +144,8 @@ class LoggerManager:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self.log_level)
         console_formatter = ColorFormatter(
-            '%(levelname)s%(asctime)s %(lineno)d %(name)s - %(message)s',
-            datefmt='%y-%m-%d %H:%M'
+            "%(levelname)s%(asctime)s %(lineno)d %(name)s - %(message)s",
+            datefmt="%y-%m-%d %H:%M",
         )
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
@@ -188,13 +153,11 @@ class LoggerManager:
         # add file handler
         file_path = os.path.join(self.log_dir, f"{name}.log")
         file_handler = RotatingFileHandler(
-            file_path,
-            maxBytes=self.max_bytes,
-            backupCount=self.backup_count
+            file_path, maxBytes=self.max_bytes, backupCount=self.backup_count
         )
         file_handler.setLevel(self.log_level)
         file_formatter = FileFormatter(
-            '%(levelname)s%(asctime)s %(lineno)d %(name)s - %(message)s'
+            "%(levelname)s%(asctime)s %(lineno)d %(name)s - %(message)s"
         )
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
@@ -238,16 +201,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "debug")
 logger_manager.init_app(log_level=LOG_LEVEL, log_dir=os.getenv("LOG_DIR", "logs"))
 
 
-        
 # Convenience function to get a named logger
 def get_logger(name="massflow"):
-    """
-    Retrieve a named logger configured by LoggerManager.
-
-    Parameters:
-        name (str): Name of the logger.
-
-    Returns:
-        logging.Logger: Configured logger instance.
-    """
+    """Retrieve a named logger configured by LoggerManager."""
     return logger_manager.get_logger(name)

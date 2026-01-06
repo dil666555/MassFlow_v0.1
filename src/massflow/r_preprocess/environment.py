@@ -3,7 +3,7 @@ import sys
 import subprocess
 import shutil
 from typing import Optional, Any, Dict
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("R Environment")
 

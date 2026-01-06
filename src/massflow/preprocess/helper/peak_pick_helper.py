@@ -7,7 +7,7 @@ from typing import Sequence
 from scipy.signal import find_peaks
 import numpy as np
 from scipy.integrate import simpson
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.preprocess.helper.est_noise_helper import estimator
 
 logger = get_logger("preprocesss")

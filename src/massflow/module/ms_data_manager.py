@@ -19,7 +19,7 @@ import random
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.module.mass_spectrum_set import MassSpectrumSet
 from massflow.tools.stream_imzml_writer import ImzMLWriter
 

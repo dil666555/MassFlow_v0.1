@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from massflow.preprocess.spectrum_preprocess import SpectrumPreprocess
 from massflow.module.spectrum import Spectrum
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("tools.plot")
 

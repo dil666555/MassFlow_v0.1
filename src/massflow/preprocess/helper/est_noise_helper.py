@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 from scipy import stats
 from scipy.interpolate import InterpolatedUnivariateSpline
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 from massflow.preprocess.helper.filter_helper import smoother
 
 logger = get_logger("preprocesss")

@@ -2,7 +2,7 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 from numba import jit
-from massflow.logger import get_logger
+from massflow.tools.logger import get_logger
 
 logger = get_logger("peak_align_compute")
 
