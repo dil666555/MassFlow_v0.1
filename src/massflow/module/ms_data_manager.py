@@ -88,9 +88,7 @@ class MSDataManager(ABC):
     def threads_executor(self) -> ThreadPoolExecutor:
         """lazy load for thread pool executor"""
         if self._threads_executor is None:
-            logger.info(
-                f"Creating ThreadPoolExecutor with max_workers={self.max_threads}"
-            )
+            logger.info(f"Creating ThreadPoolExecutor with max_workers={self.max_threads}")
             self._threads_executor = ThreadPoolExecutor(max_workers=self.max_threads)
         return self._threads_executor
 
@@ -131,12 +129,8 @@ class MSDataManager(ABC):
             return self._writer
 
         else:
-            logger.error(
-                "MS meta data is None. Please load or copy[use copy_meta method] meta data first."
-            )
-            raise ValueError(
-                "MS meta data is None. Please load or copy meta data first."
-            )
+            logger.error("MS meta data is None. Please load or copy[use copy_meta method] meta data first.")
+            raise ValueError("MS meta data is None. Please load or copy meta data first.")
 
     def copy_meta(self, source_dm: "MSDataManager"):
         """copy metadata from source MS to self MS object."""
@@ -252,10 +246,7 @@ class MSDataManager(ABC):
             if self.threads_executor is not None:
                 # Split the batch into mini-batches based on the number of threads
                 mini_batch_size = max(1, len(batch) // self.max_threads)
-                mini_batches = [
-                    batch[j : j + mini_batch_size]
-                    for j in range(0, len(batch), mini_batch_size)
-                ]
+                mini_batches = [ batch[j : j + mini_batch_size] for j in range(0, len(batch), mini_batch_size)]
 
                 # Multi-threaded processing of each mini-batch
                 futures = []
@@ -291,10 +282,7 @@ class MSDataManager(ABC):
             logger.error("MS meta data is None. Please load meta data first.")
             raise ValueError("MS meta data is None. Please load meta data first.")
 
-        if (
-            self.ms.meta.max_count_of_pixels_x is None
-            or self.ms.meta.max_count_of_pixels_y is None
-        ):
+        if (self.ms.meta.max_count_of_pixels_x is None or self.ms.meta.max_count_of_pixels_y is None):
             logger.error("Image dimensions missing in meta data.")
             raise ValueError("Image dimensions missing in meta data.")
 
@@ -307,17 +295,15 @@ class MSDataManager(ABC):
         mask = np.zeros((height, width), dtype=np.int8)
 
         # Fill the occupancy mask across all z-planes
-        for z_dict in self.ms.coordinate_index.values():
-            for x, y_dict in z_dict.items():
-                for y in y_dict.keys():
-                    ix = int(x)
-                    iy = int(y)
-                    if 0 <= ix < width and 0 <= iy < height:
-                        mask[iy, ix] = 1
+        xs = np.fromiter((int(x) for z in self.ms.coordinate_index.values() for x, ydict in z.items() for _ in ydict),dtype=np.int16,)
+        ys = np.fromiter((int(y) for z in self.ms.coordinate_index.values() for x, ydict in z.items() for y in ydict),dtype=np.int16,)
+
+        valid = (0 <= xs) & (xs < width) & (0 <= ys) & (ys < height)
+        mask[ys[valid], xs[valid]] = 1
 
         # Cache mask in metadata and return
         self.ms.meta.mask = mask
-    
+
     @abstractmethod
     def preload_meta(self, *args, **kwargs):
         """Hook for pre-loading or preparing metadata before full data loading."""
@@ -326,7 +312,7 @@ class MSDataManager(ABC):
     def loading_meta(self, *args, **kwargs):
         """Hook invoked while spectra are being loaded."""
 
-    def loaded_meta(self, *args, **kwargs):
+    def loaded_meta(self):
         """Finalize metadata after loading spectra."""
         logger.info("creating ms mask.")
         self.create_ms_meta_mask()
@@ -350,9 +336,12 @@ class MSDataManager(ABC):
                 metadata_filepath = self.swap_filepath.replace('.imzML', '.metadata')
                 os.remove(self.swap_filepath)
                 os.remove(ibd_filepath)
-                if os.path.exists(fdata_filepath): os.remove(fdata_filepath)
-                if os.path.exists(log_filepath): os.remove(log_filepath)
-                if os.path.exists(metadata_filepath): os.remove(metadata_filepath)
+                if os.path.exists(fdata_filepath):
+                    os.remove(fdata_filepath)
+                if os.path.exists(log_filepath):
+                    os.remove(log_filepath)
+                if os.path.exists(metadata_filepath):
+                    os.remove(metadata_filepath)
                 logger.info(f"Temporary swap file {self.swap_filepath}, {ibd_filepath} removed.")
 
     def close_writer(self):

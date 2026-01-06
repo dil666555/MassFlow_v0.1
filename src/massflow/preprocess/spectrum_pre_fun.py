@@ -38,15 +38,13 @@ from massflow.module.spectrum_imzml import SpectrumImzML
 from massflow.module.spectrum import Spectrum
 from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.logger import get_logger
-from massflow.preprocess.peak_align_helper import align_massdata, align_spectrum
+from massflow.preprocess.helper.peak_align_helper import align_massdata, align_spectrum
 from massflow.r_preprocess.adapter import CardinalAdapter
-from massflow.preprocess.filter_helper import smoother
-from massflow.preprocess.normalizer_helper import normalizer
-from massflow.preprocess.baseline_correction_helper import baseline_corrector
-from massflow.preprocess.est_noise_helper import estimator
-from massflow.preprocess.peak_pick_helper import peak_pick_fun
-import os
-import time
+from massflow.preprocess.helper.filter_helper import smoother
+from massflow.preprocess.helper.normalizer_helper import normalizer
+from massflow.preprocess.helper.baseline_correction_helper import baseline_corrector
+from massflow.preprocess.helper.est_noise_helper import estimator
+from massflow.preprocess.helper.peak_pick_helper import peak_pick_fun
 
 logger = get_logger("ms_preprocess")
 
@@ -154,7 +152,6 @@ class SpectrumPreprocess:
         """
         intensity = data.intensity
         norm_intensity = normalizer(
-            intensity, # type: ignore
             intensity, # type: ignore
             scale_method=scale_method,
             method=method,
@@ -306,12 +303,11 @@ class SpectrumPreprocess:
             - Loess smoothing uses `preprocess.peak_alignment._smooth1d` and spline smoothing uses
               `scipy.interpolate.UnivariateSpline`; ensure dependencies are installed and parameters valid.
         """
-        
+
         intensity = data.intensity
         index = data.mz_list
-        
+
         corrected_intensity, baseline = baseline_corrector(
-            intensity, # type: ignore
             intensity, # type: ignore
             index=index,
             method=method,
@@ -332,7 +328,7 @@ class SpectrumPreprocess:
             intensity=corrected_intensity,
             coordinate=data.coordinate,
         )
-        
+
         return corrected_spectrum, baseline
 
     @staticmethod
@@ -437,9 +433,7 @@ class SpectrumPreprocess:
         )
 
     @staticmethod
-    def calculate_snr_spectrum(
-        spectrum: Spectrum, method="sd"
-    ) -> float:
+    def calculate_snr_spectrum(spectrum: Spectrum, method="sd") -> float:
         """
         Calculate the signal-to-noise ratio (SNR) for a spectrum.
 
@@ -458,5 +452,4 @@ class SpectrumPreprocess:
 
         logger.info(f"SNR: signal_level:{signal_level}, noise:{noise}")
         return signal_level / noise
-
 

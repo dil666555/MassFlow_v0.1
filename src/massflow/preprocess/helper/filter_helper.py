@@ -4,14 +4,14 @@ License: See LICENSE file in project root
 """
 from typing import Optional
 import numpy as np
-from scipy import stats
-from massflow.logger import get_logger
-from massflow.module.spectrum import Spectrum
 import pywt
 from scipy.spatial import cKDTree #type: ignore
 from scipy.signal import savgol_filter
-from scipy.stats import norm  
+from scipy.stats import norm
+from scipy import stats
 from scipy import signal, linalg
+from massflow.logger import get_logger
+from massflow.module.spectrum import Spectrum
 
 logger = get_logger("preprocesss")
 

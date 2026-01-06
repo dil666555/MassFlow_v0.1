@@ -54,15 +54,15 @@ class MSDataManagerImzML(MSDataManager):
             max_threads (int): Maximum worker threads for batch loading utilities.
         """
         super().__init__(ms=ms,
-                         target_mz_range=None, 
-                         target_locs=target_locs, 
-                         filepath=filepath, 
-                         max_threads=max_threads, 
-                         mz_dtype=mz_dtype, 
-                         intensity_dtype=intensity_dtype, 
+                         target_mz_range=None,
+                         target_locs=target_locs,
+                         filepath=filepath,
+                         max_threads=max_threads,
+                         mz_dtype=mz_dtype,
+                         intensity_dtype=intensity_dtype,
                          temp_dir=temp_dir)
 
-        # Initialize ImzML parser and reader       
+        # Initialize ImzML parser and reader
         if os.path.exists(self.filepath) and self.filepath.endswith(".imzML") and os.path.exists(self.filepath[:-5] + "ibd"):
             self.lazy_init()
         else:
@@ -70,7 +70,7 @@ class MSDataManagerImzML(MSDataManager):
             self.reader = None
             self.ibd_path = None
             self.ms.meta  = ImzMlMetaData(filepath=None)
-            logger.warning(f"Warning: ImzML file or corresponding ibd file not found at {self.filepath} or {self.filepath[:-5] + 'ibd'}. Deferred initialization until load.")
+            logger.warning(f"Warning: ibd file not found at {self.filepath} or {self.filepath[:-5] + 'ibd'}.")
 
     def lazy_init(self):
         """
@@ -115,7 +115,7 @@ class MSDataManagerImzML(MSDataManager):
             else:
                 logger.error(f"load data faild : File {self.filepath} is empty or does not exist.")
                 raise ValueError(f"load data faild : File {self.filepath} is empty or does not exist.")
-        
+
         # Start loading process
         logger.info(f"Loading data from ImzML file: {self.filepath}")
 
@@ -130,6 +130,7 @@ class MSDataManagerImzML(MSDataManager):
                 x, y, z = c
                 c1, c2 = (self.target_locs if self.target_locs is not None else ([0, 0], [999, 999]))
                 if c1[0] <= x <= c2[0] and c1[1] <= y <= c2[1]:
+
                     # Build (x,y,z)->index mapping and add SpectrumImzML placeholders
                     spectrum = SpectrumImzML(reader=self.reader,
                                              ibd_path=self.ibd_path,
@@ -234,10 +235,6 @@ class MSDataManagerImzML(MSDataManager):
                 m.close()
 
         super().close()
-
-    def __enter__(self):
-        return super().__enter__()  # father class
-        return super().__enter__()  # father class
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
