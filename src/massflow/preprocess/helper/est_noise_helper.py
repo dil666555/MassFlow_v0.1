@@ -194,7 +194,7 @@ def _findbins(data: np.ndarray,
     nbins = min(nbins, n)  # clip to data length
 
     if overlap > 0 and not dynamic:
-        # Bin size such that total covered length equals n after accounting for overlap 
+        # Bin size such that total covered length equals n after accounting for overlap
         width = n / (nbins * (1 - overlap) + overlap)
         # Successive bin start step after overlap
         step = width * (1 - overlap)

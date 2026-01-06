@@ -1,5 +1,5 @@
-import numpy as np
 from typing import Optional
+import numpy as np
 from numpy.typing import NDArray
 from numba import jit
 from massflow.logger import get_logger

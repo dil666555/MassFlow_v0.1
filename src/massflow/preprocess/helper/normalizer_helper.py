@@ -61,7 +61,7 @@ def tic_normalize(
     norm_intensity = norm_intensity * float(scale)
     # Apply scaling method
     norm_intensity = apply_scaling(norm_intensity, scale_method)
-    
+
     return norm_intensity
 
 def rms_normalize(
@@ -134,7 +134,7 @@ def median_normalize(
     norm_intensity = norm_intensity * float(scale)
     # Apply scaling method
     norm_intensity = apply_scaling(norm_intensity, scale_method)
-    
+
     return norm_intensity
 
 def apply_scaling(
@@ -170,7 +170,7 @@ def apply_scaling(
         else:
         # If all values are the same, return original values
             return intensity
-        
+
     else:
         logger.error(f"Unsupported scale_method: {method_norm}. Supported methods are: 'none', 'unit'")
         raise ValueError(f"Unsupported scale_method: {method_norm}. Supported methods are: 'none', 'unit'")

@@ -6,9 +6,9 @@ License: See LICENSE file in project root
 from typing import Sequence
 from scipy.signal import find_peaks
 import numpy as np
+from scipy.integrate import simpson
 from massflow.logger import get_logger
 from massflow.preprocess.helper.est_noise_helper import estimator
-from scipy.integrate import simpson
 
 logger = get_logger("preprocesss")
 
