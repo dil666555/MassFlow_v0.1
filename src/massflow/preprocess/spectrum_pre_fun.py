@@ -131,35 +131,36 @@ class SpectrumPreprocess:
         data: Union[Spectrum, SpectrumImzML],
         scale_method: str = "none",
         method: str = "tic",
-        scale: float = 1.0
-    ) -> Union[Spectrum, SpectrumImzML]:
-        """
-        Normalize a single spectrum using TIC, RMS, or Median, with optional scaling.
+        scale: float = 1.0,
+    ) -> SpectrumImzML:
+        """Normalize a single spectrum using TIC, RMS, or Median, with optional scaling.
 
         Parameters:
-            data (SpectrumBaseModule | SpectrumImzML): Spectrum to normalize.
+            data (Spectrum | SpectrumImzML): Spectrum to normalize.
             scale_method (str): 'none' or 'unit' min-max scaling.
             method (str): One of {'tic', 'rms', 'median'}.
             scale (float): Cardinal-like amplitude scaling factor applied after normalization.
 
         Returns:
-            SpectrumBaseModule | SpectrumImzML: Spectrum with normalized intensity.
+            SpectrumImzML: Spectrum with normalized intensity and original coordinates.
 
         Raises:
             ValueError: If `method` is unsupported or if TIC/RMS/Median is invalid (≤ 0) in helper functions.
         """
+        SpectrumPreprocess.base_input_check(data=data)
+
         intensity = data.intensity
         norm_intensity = normalizer(
-            intensity, # type: ignore
+            intensity,  # type: ignore
             scale_method=scale_method,
             method=method,
-            scale=scale
+            scale=scale,
         )
 
-        return Spectrum(
+        return SpectrumImzML(
             mz_list=data.mz_list,
             intensity=norm_intensity,
-            coordinate=data.coordinate,
+            coordinates=data.coordinate,
         )
 
     @staticmethod
@@ -212,7 +213,7 @@ class SpectrumPreprocess:
         baseline_scale: float = 1.0,
         m: Optional[int] = None,
         decreasing: bool = True,
-    ) -> tuple[Spectrum, np.ndarray]:
+    ) -> SpectrumImzML:
         """
         Baseline correction using LocMin, SNIP, or ASLS with optional baseline scaling.
 
@@ -233,9 +234,7 @@ class SpectrumPreprocess:
             decreasing (bool): SNIP decreasing rule; iterate from large window to small when True.
 
         Returns:
-            Tuple[SpectrumBaseModule, np.ndarray]:
-                - corrected spectrum (retains original `mz_list` and `coordinates`)
-                - scaled baseline vector
+            SpectrumImzML: Corrected spectrum (retains original `mz_list` and `coordinates`).
 
         Raises:
             ValueError: Unsupported `method`.
@@ -248,11 +247,13 @@ class SpectrumPreprocess:
               `scipy.interpolate.UnivariateSpline`; ensure dependencies are installed and parameters valid.
         """
 
+        SpectrumPreprocess.base_input_check(data=data)
+
         intensity = data.intensity
         index = data.mz_list
 
-        corrected_intensity, baseline = baseline_corrector(
-            intensity, # type: ignore
+        corrected_intensity, _ = baseline_corrector(
+            intensity,
             index=index,
             method=method,
             lam=lam,
@@ -267,17 +268,17 @@ class SpectrumPreprocess:
             upper=upper,
             width=width,
         )
-        corrected_spectrum = Spectrum(
+        corrected_spectrum = SpectrumImzML(
             mz_list=data.mz_list,
             intensity=corrected_intensity,
-            coordinate=data.coordinate,
+            coordinates=data.coordinate,
         )
 
-        return corrected_spectrum, baseline
+        return corrected_spectrum
 
     @staticmethod
     def noise_reduction_spectrum(
-        data: Union[Spectrum, SpectrumImzML],
+        data: Spectrum,
         method: str = "ma",
         window: int = 5,
         sd: Optional[float] = None,
@@ -285,21 +286,23 @@ class SpectrumPreprocess:
         p: int = 2,
         coef: Optional[np.ndarray] = None,
         polyorder: int = 3,
-        derive: int = 0,
+        deriv: int = 0,
         delta: float = 1.0,
         wavelet: str = "db4",
         threshold_mode: str = "soft",
-    ) -> Union[Spectrum, SpectrumImzML]:
-        """
-        Reduce spectral noise while preserving features using multiple algorithms.
+    ) -> SpectrumImzML:
+        """Reduce noise for a single Spectrum while preserving spectral features.
 
         Parameters:
-            data (SpectrumBaseModule | SpectrumImzML): Spectrum to denoise.
+            data (SpectrumBaseModule): Spectrum to denoise.
             method (str): One of {'ma','gaussian','savgol','wavelet','ma_ns','gaussian_ns','bi_ns'}.
             window (int): Window size or neighbor count depending on method.
             sd (float, optional): Gaussian scale parameter.
             coef (np.ndarray, optional): Custom kernel for 'ma'.
             polyorder (int): Polynomial order for Savitzky-Golay.
+            deriv (int): The order of the derivative to compute. This must be a nonnegative integer. 
+            The default is 0, which means to filter the data without differentiating.
+            delta (float): The spacing of the samples to which the filter will be applied.
             wavelet (str): Wavelet family for wavelet denoising.
             threshold_mode (str): 'soft' or 'hard' thresholding.
             sd_intensity (float, optional): Intensity scale for bilateral method.
@@ -324,18 +327,18 @@ class SpectrumPreprocess:
             sd=sd,# type: ignore
             sd_intensity=sd_intensity,# type: ignore
             p=p,
-            coef=coef,# type: ignore
+            coef=coef,  # type: ignore
             polyorder=polyorder,
-            derive=derive,
+            deriv=deriv,
             delta=delta,
             wavelet=wavelet,
             threshold_mode=threshold_mode,
         )
 
-        return Spectrum(
+        return SpectrumImzML(
             mz_list=data.mz_list,
             intensity=smoothed_intensity,
-            coordinate=data.coordinate,
+            coordinates=data.coordinate,
         )
 
     @staticmethod

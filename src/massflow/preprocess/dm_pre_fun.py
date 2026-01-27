@@ -36,6 +36,34 @@ class Preprocess:
             logger.info(f"process progress: {batch_idx}/{total_batches} batches ({progress:.1f}%)")
 
     @staticmethod
+    def _process_in_batches(
+        data_manager: MSDataManager,
+        batch_size: int,
+        temp_dir: str,
+        batch_func,
+        **batch_kwargs,
+    ) -> MSDataManagerImzML:
+        processed_ms = MassSpectrumSet()
+        processed_data_manager = MSDataManagerImzML(processed_ms, temp_dir=temp_dir)
+        processed_data_manager.copy_meta(data_manager)
+
+        writer = processed_data_manager.writer
+
+        total_batches = Preprocess._total_batches(data_manager, batch_size)
+
+        for batch_idx, batch in enumerate(data_manager.get_batch_generator(batch_size=batch_size), start=1):
+            processed_batch = batch_func(batch_spectra=batch, **batch_kwargs)
+            data_manager.clear_batch_data_memory(batch=batch)
+            processed_data_manager.swap_batch_data_out2disk(batch=processed_batch, writer=writer)
+
+            Preprocess._log_progress(total_batches, batch_idx)
+
+        processed_data_manager.close_writer()
+        processed_data_manager.load_full_data_from_file()
+
+        return processed_data_manager
+
+    @staticmethod
     def peak_align(data_manager: MSDataManager,
                    ref: Optional[np.ndarray] = None,
                    tolerance: Optional[float] = None,
@@ -78,11 +106,7 @@ class Preprocess:
             raise ValueError("data_manager must be provided for peak alignment.")
 
         logger.info(
-            "peak_align_entry: backend=%s, binfun=%s, tolerance=%s, units=%s",
-            backend_method,
-            binfun,
-            tolerance,
-            units,
+            f"peak_align_entry: backend={backend_method}, binfun={binfun}, tolerance={tolerance}, units={units}"
         )
 
         if backend_method == "cardinal" and isinstance(data_manager, MSDataManagerImzML):
@@ -93,12 +117,6 @@ class Preprocess:
                                          binfun=binfun,
                                          binratio=binratio,
                                          temp_dir=temp_dir)
-
-        aligned_ms = MassSpectrumSet()
-        aligned_data_manager = MSDataManagerImzML(aligned_ms, temp_dir=temp_dir)
-        aligned_data_manager.copy_meta(data_manager)
-
-        writer = aligned_data_manager.writer
 
         if ref is None or tolerance is None:
             ref, tolerance = compute_reference(data_manager=data_manager,
@@ -112,22 +130,15 @@ class Preprocess:
 
             tolerance = tolerance * 1e6 if units == "ppm" else tolerance
 
-        total_batches = Preprocess._total_batches(data_manager, batch_size)
-
-        for batch_idx, batch in enumerate(data_manager.get_batch_generator(batch_size=batch_size), start=1):
-            aligned_batch = BatchPreprocess.peak_align_batch(batch_spectra=batch,
-                                                             ref=ref,
-                                                             tolerance=tolerance,
-                                                             units=units)
-            data_manager.clear_batch_data_memory(batch=batch)
-            aligned_data_manager.swap_batch_data_out2disk(batch=aligned_batch, writer=writer)
-
-            Preprocess._log_progress(total_batches, batch_idx)
-
-        aligned_data_manager.close_writer()
-        aligned_data_manager.load_full_data_from_file()
-
-        return aligned_data_manager
+        return Preprocess._process_in_batches(
+            data_manager=data_manager,
+            batch_size=batch_size,
+            temp_dir=temp_dir,
+            batch_func=BatchPreprocess.peak_align_batch,
+            ref=ref,
+            tolerance=tolerance,
+            units=units,
+        )
 
     @staticmethod
     def peak_pick(data_manager: MSDataManager,
@@ -168,11 +179,7 @@ class Preprocess:
             raise ValueError("data_manager must be provided for peak picking.")
 
         logger.info(
-            "peak_pick_entry: backend=%s, method=%s, snr=%s, return_type=%s",
-            backend_method,
-            method,
-            snr,
-            return_type,
+            f"peak_pick_entry: backend={backend_method}, method={method}, snr={snr}, return_type={return_type}"
         )
 
         if backend_method == "cardinal" and isinstance(data_manager, MSDataManagerImzML):
@@ -185,26 +192,214 @@ class Preprocess:
             else:
                 logger.warning("Cardinal backend does not support 'scipy' method. Falling back to Python implementation.")
 
-        picked_ms = MassSpectrumSet()
-        picked_data_manager = MSDataManagerImzML(picked_ms, temp_dir=temp_dir)
-        picked_data_manager.copy_meta(data_manager)
+        return Preprocess._process_in_batches(
+            data_manager=data_manager,
+            batch_size=batch_size,
+            temp_dir=temp_dir,
+            batch_func=BatchPreprocess.peak_pick_batch,
+            width=width,
+            method=method,
+            relheight=relheight,
+            return_type=return_type,
+        )
 
-        writer = picked_data_manager.writer
+    @staticmethod
+    def noise_reduction(
+        data_manager: MSDataManager,
+        method: str = "ma",
+        window: int = 5,
+        sd: float | None = None,
+        sd_intensity: float | None = None,
+        p: int = 2,
+        coef: np.ndarray | None = None,
+        polyorder: int = 3,
+        deriv: int = 0,
+        delta: float = 1.0,
+        wavelet: str = "db4",
+        threshold_mode: str = "soft",
+        batch_size: int = 256,
+        temp_dir: str = "./temp_noise_data",
+    ) -> MSDataManagerImzML:
+        """Perform noise reduction on MSDataManager data.
 
-        total_batches = Preprocess._total_batches(data_manager, batch_size)
+        This method follows the same batching pattern as :meth:`peak_pick`, but forwards
+        all denoising parameters to :meth:`SpectrumPreprocess.noise_reduction_spectrum` via
+        :meth:`BatchPreprocess.noise_reduction_batch`.
 
-        for batch_idx, batch in enumerate(data_manager.get_batch_generator(batch_size=batch_size), start=1):
-            picked_batch = BatchPreprocess.peak_pick_batch(batch_spectra=batch,
-                                                           width=width,
-                                                           method=method,
-                                                           relheight=relheight,
-                                                           return_type=return_type)
-            data_manager.clear_batch_data_memory(batch=batch)
-            picked_data_manager.swap_batch_data_out2disk(batch=picked_batch, writer=writer)
+        Parameters:
+            data_manager: Data manager containing spectra to be denoised.
+            method: One of {'ma','gaussian','savgol','savgol_numba','wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
+            window: Window size or neighbor count depending on method.
+            sd: Gaussian scale parameter.
+            sd_intensity: Intensity scale for bilateral method.
+            p: Minkowski metric for NS queries.
+            coef: Custom kernel for 'ma'.
+            polyorder: Polynomial order for Savitzky-Golay.
+            deriv: Derivative order for Savitzky-Golay.
+            delta: Sample spacing for Savitzky-Golay.
+            wavelet: Wavelet family for wavelet denoising.
+            threshold_mode: 'soft' or 'hard' thresholding.
+            batch_size: Number of spectra per batch.
+            temp_dir: Temporary directory for writing denoised data.
 
-            Preprocess._log_progress(total_batches, batch_idx)
+        Returns:
+            MSDataManagerImzML containing denoised spectra.
+        """
 
-        picked_data_manager.close_writer()
-        picked_data_manager.load_full_data_from_file()
+        if data_manager is None:
+            raise ValueError("data_manager must be provided for noise reduction.")
 
-        return picked_data_manager
+        method_norm = (method or "ma").strip().lower()
+        if method_norm in {"ma", "gaussian", "savgol", "savgol_numba"}:
+            logger.info(
+                f"noise_reduction_entry: method={method}, window={window}, polyorder={polyorder}, sd={sd}, deriv={deriv}, delta={delta}"
+            )
+        elif method_norm in {"wavelet"}:
+            logger.info(
+                f"noise_reduction_entry: method={method}, wavelet={wavelet}, threshold_mode={threshold_mode}"
+            )
+        else:
+            logger.info(
+                f"noise_reduction_entry: method={method}, window(k)={window}, p={p}, sd={sd}, sd_intensity={sd_intensity}"
+            )
+
+        return Preprocess._process_in_batches(
+            data_manager=data_manager,
+            batch_size=batch_size,
+            temp_dir=temp_dir,
+            batch_func=BatchPreprocess.noise_reduction_batch,
+            method=method,
+            window=window,
+            sd=sd,
+            sd_intensity=sd_intensity,
+            p=p,
+            coef=coef,
+            polyorder=polyorder,
+            deriv=deriv,
+            delta=delta,
+            wavelet=wavelet,
+            threshold_mode=threshold_mode,
+        )
+
+    @staticmethod
+    def normalization(
+        data_manager: MSDataManager,
+        scale_method: str = "none",
+        method: str = "tic",
+        scale: float = 1.0,
+        batch_size: int = 256,
+        temp_dir: str = "./temp_normalization_data",
+    ) -> MSDataManagerImzML:
+        """Perform intensity normalization on MSDataManager data.
+
+        This method mirrors :meth:`noise_reduction` but forwards normalization
+        parameters to :meth:`SpectrumPreprocess.normalization_spectrum` via
+        :meth:`BatchPreprocess.normalization_batch`.
+
+        Parameters:
+            data_manager: Data manager containing spectra to be normalized.
+            scale_method: 'none' or 'unit' min-max scaling.
+            method: One of {'tic', 'rms', 'median'}.
+            scale: Cardinal-like amplitude scaling factor applied after normalization.
+            batch_size: Number of spectra per batch.
+            temp_dir: Temporary directory for writing normalized data.
+
+        Returns:
+            MSDataManagerImzML containing normalized spectra.
+        """
+        if data_manager is None:
+            raise ValueError("data_manager must be provided for normalization.")
+
+        logger.info(
+            f"normalization_entry: method={method}, scale_method={scale_method}, scale={scale}"
+        )
+
+        return Preprocess._process_in_batches(
+            data_manager=data_manager,
+            batch_size=batch_size,
+            temp_dir=temp_dir,
+            batch_func=BatchPreprocess.normalization_batch,
+            scale_method=scale_method,
+            method=method,
+            scale=scale,
+        )
+
+    @staticmethod
+    def baseline_correction(
+        data_manager: MSDataManager,
+        method: str = "asls",
+        smooth: str = "none",
+        span: float = 0.1,
+        s: float | None = 0.0,
+        upper: bool = False,
+        width: int = 5,
+        lam: float = 1e7,
+        p: float = 0.01,
+        niter: int = 15,
+        baseline_scale: float = 1.0,
+        m: int | None = None,
+        decreasing: bool = True,
+        batch_size: int = 256,
+        temp_dir: str = "./temp_baseline_data",
+    ) -> MSDataManagerImzML:
+        """Perform baseline correction on MSDataManager data.
+
+        This method mirrors :meth:`noise_reduction` but forwards baseline parameters to
+        :meth:`SpectrumPreprocess.baseline_correction_spectrum` via
+        :meth:`BatchPreprocess.baseline_correction_batch`.
+
+        Parameters:
+            data_manager: Data manager containing spectra to be baseline-corrected.
+            method: One of {'locmin', 'snip', 'asls'}.
+            smooth: LocMin smoothing method; one of {'none', 'loess', 'spline'}.
+            span: Loess span proportion in (0, 1]; used when method='locmin'.
+            s: Spline smoothing target RSS (>= 0); used when method='locmin'.
+            upper: If True, use local maxima as anchors; used when method='locmin'.
+            width: Neighborhood width (>= 3) for extrema detection; used when method='locmin'.
+            lam: ASLS smoothness parameter; used when method='asls'.
+            p: ASLS asymmetry parameter in (0, 1); used when method='asls'.
+            niter: ASLS iteration count (> 0); used when method='asls'.
+            baseline_scale: Scale factor in (0, 1] applied to the estimated baseline.
+            m: SNIP window half-size (>= 1); used when method='snip'.
+            decreasing: SNIP decreasing rule; used when method='snip'.
+            batch_size: Number of spectra per batch.
+            temp_dir: Temporary directory for writing baseline-corrected data.
+
+        Returns:
+            MSDataManagerImzML containing baseline-corrected spectra.
+        """
+        if data_manager is None:
+            raise ValueError("data_manager must be provided for baseline correction.")
+
+        method_norm = (method or "asls").strip().lower()
+        if method_norm == "asls":
+            logger.info(
+                f"baseline_correction_entry: method={method}, lam={lam}, p={p}, niter={niter}"
+            )
+        elif method_norm in {"snip", "snip_numba"}:
+            logger.info(
+                f"baseline_correction_entry: method={method}, m={m}, decreasing={decreasing}, baseline_scale={baseline_scale}"
+            )
+        else:
+            logger.info(
+                f"baseline_correction_entry: method={method}, smooth={smooth}, span={span}, s={s}, upper={upper}, width={width}"
+            )
+
+        return Preprocess._process_in_batches(
+            data_manager=data_manager,
+            batch_size=batch_size,
+            temp_dir=temp_dir,
+            batch_func=BatchPreprocess.baseline_correction_batch,
+            method=method,
+            smooth=smooth,
+            span=span,
+            s=s,
+            upper=upper,
+            width=width,
+            lam=lam,
+            p=p,
+            niter=niter,
+            baseline_scale=baseline_scale,
+            m=m,
+            decreasing=decreasing,
+        )
