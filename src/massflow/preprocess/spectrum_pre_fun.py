@@ -219,6 +219,7 @@ class SpectrumPreprocess:
         baseline_scale: float = 1.0,
         m: Optional[int] = None,
         decreasing: bool = True,
+        numba_max_threads: Optional[int] = None,
     ) -> SpectrumImzML:
         """
         Baseline correction using LocMin, SNIP, or ASLS with optional baseline scaling.
@@ -238,6 +239,7 @@ class SpectrumPreprocess:
             baseline_scale (float): Scale factor in (0, 1] applied to the estimated baseline prior to subtraction.
             m (int, optional): SNIP window half-size (>= 1). Used when `method='snip'`.
             decreasing (bool): SNIP decreasing rule; iterate from large window to small when True.
+            numba_max_threads (int, optional): Max threads for Numba execution.
 
         Returns:
             SpectrumImzML: Corrected spectrum (retains original `mz_list` and `coordinates`).
@@ -273,6 +275,7 @@ class SpectrumPreprocess:
             s=s,
             upper=upper,
             width=width,
+            numba_max_threads=numba_max_threads,
         )
         corrected_spectrum = SpectrumImzML(
             mz_list=data.mz_list,
@@ -301,7 +304,8 @@ class SpectrumPreprocess:
 
         Parameters:
             data (SpectrumBaseModule): Spectrum to denoise.
-            method (str): One of {'ma','gaussian','savgol','wavelet','ma_ns','gaussian_ns','bi_ns'}.
+            method (str): One of {'ma','ma_numba','ma_loop','gaussian','gaussian_numba','savgol','savgol_numba',
+            'wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
             window (int): Window size or neighbor count depending on method.
             sd (float, optional): Gaussian scale parameter.
             coef (np.ndarray, optional): Custom kernel for 'ma'.

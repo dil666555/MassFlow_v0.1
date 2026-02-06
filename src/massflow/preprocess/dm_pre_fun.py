@@ -220,6 +220,7 @@ class Preprocess:
         threshold_mode: str = "soft",
         batch_size: int = 256,
         temp_dir: str = "./temp_noise_data",
+        numba_max_threads: int = None,
     ) -> MSDataManagerImzML:
         """Perform noise reduction on MSDataManager data.
 
@@ -229,7 +230,8 @@ class Preprocess:
 
         Parameters:
             data_manager: Data manager containing spectra to be denoised.
-            method: One of {'ma','gaussian','savgol','savgol_numba','wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
+            method: One of {'ma','ma_numba','ma_loop','gaussian','gaussian_numba','savgol','savgol_numba','wavelet'
+            'ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
             window: Window size or neighbor count depending on method.
             sd: Gaussian scale parameter.
             sd_intensity: Intensity scale for bilateral method.
@@ -242,6 +244,7 @@ class Preprocess:
             threshold_mode: 'soft' or 'hard' thresholding.
             batch_size: Number of spectra per batch.
             temp_dir: Temporary directory for writing denoised data.
+            numba_max_threads: Maximum number of threads for Numba parallel execution (default: None, use system default).
 
         Returns:
             MSDataManagerImzML containing denoised spectra.
@@ -251,7 +254,7 @@ class Preprocess:
             raise ValueError("data_manager must be provided for noise reduction.")
 
         method_norm = (method or "ma").strip().lower()
-        if method_norm in {"ma", "gaussian", "savgol", "savgol_numba"}:
+        if method_norm in {"ma", "ma_numba", "ma_loop", "gaussian", "gaussian_numba", "savgol", "savgol_numba"}:
             logger.info(
                 f"noise_reduction_entry: method={method}, window={window}, polyorder={polyorder}, sd={sd}, deriv={deriv}, delta={delta}"
             )
@@ -280,6 +283,7 @@ class Preprocess:
             delta=delta,
             wavelet=wavelet,
             threshold_mode=threshold_mode,
+            numba_max_threads=numba_max_threads,
         )
 
     @staticmethod
@@ -290,6 +294,7 @@ class Preprocess:
         scale: float = 1.0,
         batch_size: int = 256,
         temp_dir: str = "./temp_normalization_data",
+        numba_max_threads: int = None,
     ) -> MSDataManagerImzML:
         """Perform intensity normalization on MSDataManager data.
 
@@ -304,6 +309,7 @@ class Preprocess:
             scale: Cardinal-like amplitude scaling factor applied after normalization.
             batch_size: Number of spectra per batch.
             temp_dir: Temporary directory for writing normalized data.
+            numba_max_threads: Maximum number of threads for Numba parallel execution.
 
         Returns:
             MSDataManagerImzML containing normalized spectra.
@@ -323,6 +329,7 @@ class Preprocess:
             scale_method=scale_method,
             method=method,
             scale=scale,
+            numba_max_threads=numba_max_threads,
         )
 
     @staticmethod
@@ -342,6 +349,7 @@ class Preprocess:
         decreasing: bool = True,
         batch_size: int = 256,
         temp_dir: str = "./temp_baseline_data",
+        numba_max_threads: int = None,
     ) -> MSDataManagerImzML:
         """Perform baseline correction on MSDataManager data.
 
@@ -365,6 +373,7 @@ class Preprocess:
             decreasing: SNIP decreasing rule; used when method='snip'.
             batch_size: Number of spectra per batch.
             temp_dir: Temporary directory for writing baseline-corrected data.
+            numba_max_threads: Maximum number of threads for Numba parallel execution.
 
         Returns:
             MSDataManagerImzML containing baseline-corrected spectra.
@@ -403,4 +412,5 @@ class Preprocess:
             baseline_scale=baseline_scale,
             m=m,
             decreasing=decreasing,
+            numba_max_threads=numba_max_threads,
         )

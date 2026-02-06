@@ -5,6 +5,7 @@ from massflow.module.spectrum import Spectrum
 from massflow.tools.logger import get_logger
 from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
 from massflow.preprocess.helper.filter_helper import smoother
+from massflow.preprocess.helper.normalizer_helper import normalizer
 
 logger = get_logger("batch_pre_fun")
 
@@ -95,12 +96,13 @@ class BatchPreprocess:
         delta: float = 1.0,
         wavelet: str = "db4",
         threshold_mode: str = "soft",
+        numba_max_threads: int = None,
     ) -> Sequence[SpectrumImzML]:
         """Perform noise reduction on a batch of spectra.
 
         Parameters:
         - batch_spectra: Sequence of Spectrum objects to be denoised.
-        - method: One of {'ma','gaussian','savgol','savgol_numba','wavelet','ma_ns','gaussian_ns','bi_ns',
+        - method: One of {'ma','ma_numba','ma_loop','gaussian','gaussian_numba','savgol','savgol_numba','wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba',
           'ma_ns_numba','gaussian_ns_numba','bi_ns_numba'}.
         - window: Window size or neighbor count depending on method.
         - sd: Gaussian scale parameter.
@@ -112,6 +114,7 @@ class BatchPreprocess:
         - delta: Sample spacing for Savitzky-Golay.
         - wavelet: Wavelet family for wavelet denoising.
         - threshold_mode: 'soft' or 'hard' thresholding.
+        - numba_max_threads: Maximum number of threads for Numba parallel execution.
 
         Returns:
         - Sequence of denoised spectra as SpectrumImzML objects.
@@ -119,16 +122,26 @@ class BatchPreprocess:
         if not batch_spectra:
             return []
 
-    
-        # Specialized 2D Numba acceleration path for savgol_numba:
+
+        # Specialized 2D Numba acceleration path for savgol_numba, ma_numba, gaussian_numba:
         # At the batch level, first stack spectra into a (n_spectra, n_mz) matrix,
         # then call the smoother once to trigger the parallel implementation
-        # in savgol_batch_jit from noise_reduction_numba.
-        if method == "savgol_numba":
-            intensities = np.array([s.intensity for s in batch_spectra], dtype=np.float32)
+        # in noise_reduction_numba.
+        if method in {"savgol_numba", "ma_numba", "gaussian_numba", "ma_loop"}:
+            # Handle variable lengths via padding
+            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32)
+            max_len = np.max(lengths)
+            n_spectra = len(batch_spectra)
 
+            intensities_padded = np.zeros((n_spectra, max_len), dtype=np.float32)
+
+            for i, s in enumerate(batch_spectra):
+                # Copy data into buffer
+                valid_len = lengths[i]
+                intensities_padded[i, :valid_len] = s.intensity.astype(np.float32, copy=False)
+                
             smoothed = smoother(
-                intensities,
+                intensities_padded,
                 method=method,
                 window=window,
                 sd=sd,
@@ -140,15 +153,21 @@ class BatchPreprocess:
                 delta=delta,
                 wavelet=wavelet,
                 threshold_mode=threshold_mode,
+                lengths=lengths,  # Pass valid lengths
+                numba_max_threads=numba_max_threads,
             )
 
             denoised_spectra: list[SpectrumImzML] = []
             for i, spectrum in enumerate(batch_spectra):
+                valid_len = lengths[i]
+                # Trim result back to original length
+                denoised_intensity = smoothed[i, :valid_len]
+                
                 denoised_spectra.append(
                     SpectrumImzML(
                         coordinates=spectrum.coordinate,
                         mz_list=spectrum.mz_list,
-                        intensity=smoothed[i],
+                        intensity=denoised_intensity,
                     )
                 )
 
@@ -181,6 +200,7 @@ class BatchPreprocess:
         scale_method: str = "none",
         method: str = "tic",
         scale: float = 1.0,
+        numba_max_threads: int = None,
     ) -> Sequence[SpectrumImzML]:
         """Normalize a batch of spectra.
 
@@ -189,6 +209,7 @@ class BatchPreprocess:
         - scale_method: 'none' or 'unit' min-max scaling.
         - method: One of {'tic', 'rms', 'median'}.
         - scale: Cardinal-like amplitude scaling factor applied after normalization.
+        - numba_max_threads: Maximum number of threads for Numba parallel execution.
 
         Returns:
         - Sequence of normalized spectra as SpectrumImzML objects.
@@ -196,16 +217,73 @@ class BatchPreprocess:
         if not batch_spectra:
             return []
 
+        # -----------------------------------------------------------------
+        # Path A: High Performance Batching (Numba)
+        # Try to use the direct Numba backend if available and method is supported.
+        # -----------------------------------------------------------------
+        numba_supported_methods = {'tic_numba', 'rms_numba', 'median_numba'}
+        
+        # Check availability of Numba implementation locally
+        if method in numba_supported_methods:
+            # 1. Construct 2D Matrix with padding
+            n_spectra = len(batch_spectra)
+            
+            # Calculate lengths for each spectrum
+            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32)
+            max_len = np.max(lengths) if n_spectra > 0 else 0
+            
+            if max_len > 0:
+                intensities_padded = np.zeros((n_spectra, max_len), dtype=np.float32)
+                
+                # Fill the matrix
+                for i, s in enumerate(batch_spectra):
+                    valid_len = lengths[i]
+                    if valid_len > 0:
+                        intensities_padded[i, :valid_len] = s.intensity.astype(np.float32, copy=False)
+
+                # 2. Call the Numba kernel directly (normalizer_numba)
+                # It accepts the 2D matrix and 'lengths' for efficient batch processing
+                normalized_matrix = normalizer(
+                    intensities_padded,
+                    method=method,
+                    scale=scale,
+                    scale_method=scale_method,
+                    lengths=lengths,
+                    numba_max_threads=numba_max_threads
+                )
+
+                # 3. Reconstruct SpectrumImzML objects
+                normalized_spectra_numba: list[SpectrumImzML] = []
+                for i, spectrum in enumerate(batch_spectra):
+                    valid_len = lengths[i]
+                    
+                    # Slice back to original length
+                    processed_intensity = normalized_matrix[i, :valid_len]
+                    
+                    normalized_spectra_numba.append(
+                        SpectrumImzML(
+                            coordinates=spectrum.coordinate,
+                            mz_list=spectrum.mz_list, 
+                            intensity=processed_intensity,
+                        )
+                    )
+                return normalized_spectra_numba
+
+        # -----------------------------------------------------------------
+        # Path B: Fallback (Sequential Loop)
+        # Delegate to SpectrumPreprocess.normalization_spectrum for each spectrum.
+        # -----------------------------------------------------------------
         normalized_spectra: list[SpectrumImzML] = []
         for spectrum in batch_spectra:
-            normalized = SpectrumPreprocess.normalization_spectrum(
+            # Re-use the single spectrum processing logic
+            normalized_spectrum = SpectrumPreprocess.normalization_spectrum(
                 data=spectrum,
-                scale_method=scale_method,
                 method=method,
                 scale=scale,
+                scale_method=scale_method
             )
-            normalized_spectra.append(normalized)
-
+            normalized_spectra.append(normalized_spectrum)
+            
         return normalized_spectra
 
     @staticmethod
@@ -223,6 +301,7 @@ class BatchPreprocess:
         baseline_scale: float = 1.0,
         m: int | None = None,
         decreasing: bool = True,
+        numba_max_threads: int = None,
     ) -> Sequence[SpectrumImzML]:
         """Perform baseline correction on a batch of spectra.
 
@@ -240,6 +319,7 @@ class BatchPreprocess:
         - baseline_scale: Scale factor in (0, 1] applied to estimated baseline.
         - m: SNIP window half-size (>= 1); used when method='snip'.
         - decreasing: SNIP decreasing rule; used when method='snip'.
+        - numba_max_threads: Maximum number of threads for Numba parallel execution.
 
         Returns:
         - Sequence of baseline-corrected spectra.
@@ -263,6 +343,7 @@ class BatchPreprocess:
                 baseline_scale=baseline_scale,
                 m=m,
                 decreasing=decreasing,
+                numba_max_threads=numba_max_threads,
             )
             corrected_spectra.append(corrected)
 

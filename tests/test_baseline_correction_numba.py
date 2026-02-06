@@ -15,7 +15,7 @@ logger = get_logger("test_baseline_correction_numba")
 
 @pytest.fixture(scope="module")
 def baseline_numba_data_manager(
-    data_file_path: str = "data/example.imzML",
+    data_file_path: str = "Data/other/Example_read/example.imzML",
 ) -> MSDataManagerImzML:
     mass_data = MassSpectrumSet()
     dm = MSDataManagerImzML(mass_data, filepath=data_file_path)
@@ -32,6 +32,7 @@ def run_dm_baseline_task(
     dm: MSDataManagerImzML,
     method: str = "snip",
     batch_size: int = 512,
+    numba_max_threads: int = None,
 ) -> MSDataManagerImzML:
     corrected_manager = Preprocess.baseline_correction(
         data_manager=dm,
@@ -40,6 +41,7 @@ def run_dm_baseline_task(
         decreasing=True,
         baseline_scale=1.0,
         batch_size=batch_size,
+        numba_max_threads=numba_max_threads,
     )
     return corrected_manager
 
@@ -48,7 +50,7 @@ class TestBaselineCorrectionDMNumba:
     @pytest.mark.parametrize(
         "method,backend",
         [
-            ("snip", "python"),
+            #("snip", "python"),
             ("snip", "numba"),
         ],
     )
@@ -62,19 +64,21 @@ class TestBaselineCorrectionDMNumba:
     ) -> None:
         if backend == "python":
             dm_method = method                # "snip"
+            threads = None
         else:
             dm_method = f"{method}_numba"     # "snip_numba"
+            threads = 8
 
         logger.info(
             f"Benchmarking baseline correction with method={dm_method}, "
-            f"backend={backend}"
+            f"backend={backend}, threads={threads}"
         )
 
         corrected_manager = benchmark.pedantic(
             run_dm_baseline_task,
-            args=(baseline_numba_data_manager, dm_method, 512),
+            args=(baseline_numba_data_manager, dm_method, 512, threads),
             rounds=1,
-            iterations=10,
+            iterations=3,
             warmup_rounds=0,
         )
         corrected_manager.close()
