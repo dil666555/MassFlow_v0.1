@@ -4,7 +4,7 @@ from massflow.module.pixel_coordinates import PixelCoordinates
 from massflow.tools.stream_imzml_writer import ImzMLWriter
 from massflow.tools.logger import get_logger
 
-logger = get_logger("spectrum")
+logger = get_logger("massflow.module.spectrum")
 
 
 class Spectrum:
@@ -44,14 +44,13 @@ class Spectrum:
         self._intensity = intensity
 
         # Initialize coordinates to PixelCoordinates instance
-        # need to update
         self.coordinate = PixelCoordinates(coordinate)
 
         # sort part , do not use _sort_by_mz
         self._sort_by_mz = sort_by_mz
 
-    def _resolve_data(self):
-        """Internal hook to trigger lazy loading of data."""
+    def resolve_data(self, **kwargs):
+        """Method to swap data."""
 
     # lazy load properties
     @property
@@ -71,8 +70,7 @@ class Spectrum:
 
     @mz_list.setter
     def mz_list(self, value):
-        if value is None or isinstance(value, np.ndarray):
-            self._mz_list = value
+        self._mz_list = value
 
     @property
     def intensity(self):
@@ -83,7 +81,7 @@ class Spectrum:
             np.ndarray: Array of intensity values.
         """
         if self._intensity is None:
-            self._resolve_data()
+            self.resolve_data()
 
         return self._intensity
 
@@ -99,11 +97,9 @@ class Spectrum:
     def sort_by_mz(self, value: bool = True):
         if value:
             # make sure both mz_list and intensity are not None
-            if (
-                self._sort_by_mz is False
+            if (self._sort_by_mz is False
                 and self.mz_list is not None
-                and self.intensity is not None
-            ):
+                and self.intensity is not None):
                 # sort the data by mz
                 sorted_indices = np.argsort(self.mz_list)
                 self._mz_list = self.mz_list[sorted_indices]
@@ -127,8 +123,24 @@ class Spectrum:
         """
         return self.coordinate
 
+    def __str__(self):
+
+        """Return a string representation of the spectrum basic info."""
+
+        if self.mz_list is not None and len(self.mz_list) > 0:
+            mz_min, mz_max = min(self.mz_list), max(self.mz_list)
+            intensity_max = max(self.intensity) if self.intensity is not None else 0
+
+            return (f"  MS len: {len(self)}\r\n"
+                    f"  MS range: {mz_min} - {mz_max}\r\n"
+                    f"  MS coord: {self.coordinate}\r\n"
+                    f"  max intensity: {intensity_max}\r\n")
+
+        return f"  MS len: 0\r\n  MS coord: {self.coordinate}\r\n"
+
     def __len__(self):
         """Return number of peaks in the spectrum."""
+
         if self.mz_list is not None:
             return len(self.mz_list)
         else:
@@ -136,6 +148,7 @@ class Spectrum:
 
     def __eq__(self, other):
         """Check equality based on spatial coordinates."""
+
         if not isinstance(other, Spectrum):
             return False
         return self.coordinate == other.coordinate
@@ -143,22 +156,20 @@ class Spectrum:
     def __getitem__(self, index):
         """
         Get (m/z, intensity) pair at index.
-
-        Raises:
-            IndexError: If data is not loaded.
         """
+
         if self.mz_list is None or self.intensity is None:
             logger.error("mz_list or intensity is None, can not get item.")
             raise IndexError("mz_list or intensity is None, can not get item.")
 
         return self.mz_list[index], self.intensity[index]
 
-    def crop_range(
-        self,
-        x_range: Sequence[float],
-        sort_by_mz: bool = True,
-        mode: str = "new",
-    ):
+    # TODO：not high efficient
+    def crop_range(self,
+                   mz_range: Sequence[float],
+                   sort_by_mz: bool = True,
+                   mode: str = "new",
+        ):
         """
         Crop spectrum to a specific m/z range.
 
@@ -177,18 +188,18 @@ class Spectrum:
             # valid test
             min_mz = np.min(self.mz_list)
             max_mz = np.max(self.mz_list)
-            if x_range[0] < min_mz or x_range[1] > max_mz:
+            if mz_range[0] < min_mz or mz_range[1] > max_mz:
 
                 # make sure x_range is valid
-                if x_range is not None and len(x_range) == 2:
+                if mz_range is not None and len(mz_range) == 2:
                     mz_c = None
                     inten_c = None
 
                     # without sort and dont want to sort
                     if not sort_by_mz and not self._sort_by_mz:
                         mask_xr = np.ones_like(self.mz_list, dtype=bool)
-                        mask_xr &= (self.mz_list >= x_range[0]) & (
-                            self.mz_list <= x_range[1]
+                        mask_xr &= (self.mz_list >= mz_range[0]) & (
+                            self.mz_list <= mz_range[1]
                         )
 
                         mz_c = self.mz_list[mask_xr]
@@ -200,10 +211,10 @@ class Spectrum:
                         self.sort_by_mz = True
                         # use searchsorted to find the indices
                         start_index = np.searchsorted(
-                            self.mz_list, x_range[0], side="left"
+                            self.mz_list, mz_range[0], side="left"
                         )
                         end_index = np.searchsorted(
-                            self.mz_list, x_range[1], side="right"
+                            self.mz_list, mz_range[1], side="right"
                         )
 
                         # build the data
@@ -216,12 +227,8 @@ class Spectrum:
                 mz_c = np.array([-1])
                 inten_c = np.array([-1])
         else:
-            logger.error(
-                "mz_list is None, can not crop by mz. xr must be a tuple of two float numbers."
-            )
-            raise ValueError(
-                "mz_list is None, can not crop by mz. xr must be a tuple of two float numbers."
-            )
+            logger.error("mz_list is None, can not crop by mz. xr must be a tuple of two float numbers.")
+            raise ValueError("mz_list is None, can not crop by mz. xr must be a tuple of two float numbers.")
 
         # cut part
         if mode == "new":
@@ -242,12 +249,14 @@ class Spectrum:
             logger.error(f"mode {mode} is not supported. use 'new' or 'update'")
             raise ValueError(f"mode {mode} is not supported. use 'new' or 'update'")
 
+
     def is_sorted(self):
         # Check if the mz_list is sorted in ascending order.
         if self.mz_list is not None and self.intensity is not None:
             return np.all(self.mz_list[:-1] <= self.mz_list[1:])
 
         return False
+
 
     def clear_data(self):
         """Clear loaded data from memory (for lazy loading)."""
@@ -258,6 +267,7 @@ class Spectrum:
     def x(self):
         """Get X coordinate."""
         if self.coordinate is None:
+            logger.error("coordinates is not initialized.")
             raise AttributeError("coordinates is not initialized.")
         return self.coordinate.x
 
@@ -265,6 +275,7 @@ class Spectrum:
     def y(self):
         """Get Y coordinate."""
         if self.coordinate is None:
+            logger.error("coordinates is not initialized.")
             raise AttributeError("coordinates is not initialized.")
         return self.coordinate.y
 
@@ -272,8 +283,10 @@ class Spectrum:
     def z(self):
         """Get Z coordinate."""
         if self.coordinate is None:
+            logger.error("coordinates is not initialized.")
             raise AttributeError("coordinates is not initialized.")
         return self.coordinate.z
 
+
     def swap_out2disk(self, writer: ImzMLWriter):
-        pass
+        """Method to swap data."""

@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from typing import Optional
 from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.tools.logger import get_logger
 from massflow.preprocess.dm_pre_fun import Preprocess
 
@@ -24,8 +24,8 @@ def noise_data_manager(data_file_path="Data/other/Example_read/example.imzML") -
     # subset_height = max(1, height // 10)
     # dm.target_locs = [(1, 1), (width, subset_height)]
 
-    dm.load_full_data_from_file()
-    for _ in dm.get_batch_generator(batch_size=512):
+    dm.load_head_data()
+    for _ in dm.batch_generator(batch_size=512):
         pass
     return dm
 

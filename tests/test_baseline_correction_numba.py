@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pytest
 from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.preprocess.dm_pre_fun import Preprocess
 from massflow.tools.logger import get_logger
 
@@ -20,9 +20,9 @@ def baseline_numba_data_manager(
 ) -> MSDataManagerImzML:
     mass_data = MassSpectrumSet()
     dm = MSDataManagerImzML(mass_data, filepath=data_file_path)
-    dm.load_full_data_from_file()
+    dm.load_head_data()
 
-    for _ in dm.get_batch_generator(batch_size=512):
+    for _ in dm.batch_generator(batch_size=512):
         pass
     
     logger.info("data pre-load finished!")

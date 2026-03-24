@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from massflow.tools.logger import get_logger
 from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.preprocess.dm_pre_fun import Preprocess
 from massflow.r_preprocess import set_default_r_home
 
@@ -21,7 +21,7 @@ set_default_r_home("r_home_path_here")  # set R_HOME path here
 def data_manager(filepath=FILEPATH) -> MSDataManagerImzML:
     mass_data = MassSpectrumSet()
     dm = MSDataManagerImzML(mass_data, filepath=filepath)
-    dm.load_full_data_from_file()
+    dm.load_head_data()
     return dm
 
 def run_alignment_task(

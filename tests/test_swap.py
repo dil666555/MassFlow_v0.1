@@ -3,7 +3,7 @@ import os
 from functools import partial
 import pytest
 from massflow.module.spectrum_imzml import SpectrumImzML
-from massflow.module.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
 from massflow.tools.logger import get_logger
 
 logger = get_logger("test_swap")
@@ -26,7 +26,7 @@ def data_swap_out_direct(raw_dm, limit=-1):
         if i >= limit:
             break
 
-        writer.addSpectrum(
+        writer.add_spectrum(
             raw_spec.mz_list, raw_spec.intensity, raw_spec.coordinate.get_tuple()
         )
 
@@ -107,10 +107,10 @@ class TestDataSwap:
 
         # load meta data
         dm_raw = MSDataManagerImzML(filepath=filepath)
-        dm_raw.load_full_data_from_file()
+        dm_raw.load_head_data()
         dm_raw.inspect_data()
         # load data check
-        batch_generator = dm_raw.get_batch_generator()
+        batch_generator = dm_raw.batch_generator()
         for batch in batch_generator:
             assert len(batch[1]) > 0
 
