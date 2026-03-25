@@ -14,8 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Generator
 import numpy as np
 from massflow.tools.logger import get_logger
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.spectrum import Spectrum
+from massflow.module import MassSpectrumSet, Spectrum
 from massflow.tools.stream_imzml_writer import ImzMLWriter
 
 logger = get_logger("massflow.datamanager")
@@ -68,7 +67,10 @@ class MSDataManager(ABC):
             self.file_base_path = os.path.join(base_dir, f"temp_{uuid.uuid4().hex}")
             self.swap_filepath = self.file_base_path
         else:
-            self.file_base_path = filepath[: -len(".imzML")] if filepath.endswith(".imzML") else filepath
+            base_path = filepath
+            while (next_base := os.path.splitext(base_path)[0]) != base_path:
+                base_path = next_base
+            self.file_base_path = base_path
             self.swap_filepath = None
 
 

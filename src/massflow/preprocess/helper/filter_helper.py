@@ -11,7 +11,7 @@ from scipy.stats import norm
 from scipy import stats
 from scipy import signal, linalg
 from massflow.tools.logger import get_logger
-from massflow.module.spectrum import Spectrum
+from massflow.module import Spectrum
 from massflow.preprocess.numba.noise_reduction_numba import (
     smooth_signal_savgol_numba,
     smooth_ns_signal_ma_numba,

@@ -1,8 +1,7 @@
-
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.preprocess.dm_pre_fun import Preprocess
-from massflow.tools.logger import get_logger
+from massflow.data_manager import MSDataManagerImzML
+from massflow.module import MassSpectrumSet
+from massflow.preprocess import Preprocessor
+from massflow.tools import get_logger
 logger = get_logger("massflow")
 
 def main():
@@ -15,14 +14,7 @@ def main():
 
         logger.info("Start async pipeline noise reduction with ma_loop")
         processed_data_manager = (
-            Preprocess.pipeline(
-                data_manager=data_manager,
-                batch_size=128,
-                temp_dir="./temp_noise_async_data",
-                queue_ab_size=5,
-                queue_bc_size=10,
-                keep_order=False,
-            )
+            Preprocessor(data_manager)
             .noise_reduction(
                 method="ma_loop",
                 window=10,

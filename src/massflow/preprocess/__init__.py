@@ -1,9 +1,9 @@
-from massflow.preprocess.async_pipeline import AsyncPreprocessPipeline, BatchChunk, PreprocessTask
-from massflow.preprocess.dm_pre_fun import Preprocess
+from massflow.preprocess.batch_pre_fun import BatchPreprocess
+from massflow.preprocess.preprocessor import Preprocessor, BatchChunk, PreprocessTask
 
 __all__ = [
-    "AsyncPreprocessPipeline",
+    "BatchPreprocess",
     "BatchChunk",
-    "Preprocess",
+    "Preprocessor",
     "PreprocessTask",
 ]

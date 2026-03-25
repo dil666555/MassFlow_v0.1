@@ -2,8 +2,8 @@ import numpy as np
 import time
 from functools import partial
 import pytest
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.module import MassSpectrumSet
+from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess.dm_pre_fun import Preprocess
 from massflow.tools.logger import get_logger
 pytestmark = pytest.mark.filterwarnings("ignore:This process .* is multi-threaded, use of fork():DeprecationWarning")

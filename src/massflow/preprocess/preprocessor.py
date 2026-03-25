@@ -5,11 +5,9 @@ from queue import Queue
 from threading import Event, Lock, Thread
 from typing import Any, Callable, Optional, Sequence
 
-from massflow.data_manager.ms_data_manager import MSDataManager
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.spectrum import Spectrum
-from massflow.preprocess.batch_pre_fun import BatchPreprocess
+from massflow.data_manager import MSDataManager, MSDataManagerImzML
+from massflow.module import MassSpectrumSet, Spectrum
+from massflow.preprocess.api import PreprocessorAPI
 from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.preprocess.async_pipeline")
@@ -33,7 +31,7 @@ class PreprocessTask:
     sequence: int = 0
 
 
-class AsyncPreprocessPipeline:
+class Preprocessor(PreprocessorAPI):
     """Three-stage asynchronous preprocessing pipeline with bounded queues."""
 
     _OPERATION_ORDER: dict[str, int] = {
@@ -49,15 +47,16 @@ class AsyncPreprocessPipeline:
         data_manager: MSDataManager,
         *,
         batch_size: int = 256,
-        temp_dir: str = "./temp_pipeline_data",
         queue_ab_size: int = 3,
         queue_bc_size: int = 3,
+        temp_dir: str | None = None,
         keep_order: bool = False,
     ):
         if data_manager is None:
             raise ValueError("data_manager must be provided for async preprocess pipeline.")
-        if batch_size <= 0:
-            raise ValueError("batch_size must be a positive integer.")
+        if batch_size <= 0 or batch_size > 9056:
+            logger.error(f"Invalid batch_size: {batch_size}. batch_size must be a positive integer between 1 and 9056.")
+            raise ValueError("batch_size must be a positive integer between 1 and 9056.")
         if queue_ab_size <= 0 or queue_bc_size <= 0:
             raise ValueError("queue_ab_size and queue_bc_size must be positive integers.")
 
@@ -71,7 +70,7 @@ class AsyncPreprocessPipeline:
         self._tasks: list[PreprocessTask] = []
         self._task_sequence = 0
 
-    def _register_task(self, name: str, apply_fn: Callable[..., Sequence[Spectrum]], **kwargs) -> "AsyncPreprocessPipeline":
+    def _register_task(self, name: str, apply_fn: Callable[..., Sequence[Spectrum]], **kwargs) -> "Preprocessor":
         self._task_sequence += 1
         self._tasks.append(
             PreprocessTask(
@@ -82,21 +81,6 @@ class AsyncPreprocessPipeline:
             )
         )
         return self
-
-    def baseline_correction(self, **kwargs) -> "AsyncPreprocessPipeline":
-        return self._register_task("baseline_correction", BatchPreprocess.baseline_correction_batch, **kwargs)
-
-    def noise_reduction(self, **kwargs) -> "AsyncPreprocessPipeline":
-        return self._register_task("noise_reduction", BatchPreprocess.noise_reduction_batch, **kwargs)
-
-    def normalization(self, **kwargs) -> "AsyncPreprocessPipeline":
-        return self._register_task("normalization", BatchPreprocess.normalization_batch, **kwargs)
-
-    def peak_align(self, **kwargs) -> "AsyncPreprocessPipeline":
-        return self._register_task("peak_align", BatchPreprocess.peak_align_batch, **kwargs)
-
-    def peak_pick(self, **kwargs) -> "AsyncPreprocessPipeline":
-        return self._register_task("peak_pick", BatchPreprocess.peak_pick_batch, **kwargs)
 
     def _sorted_tasks(self) -> list[PreprocessTask]:
         def sort_key(task: PreprocessTask) -> tuple[int, int]:

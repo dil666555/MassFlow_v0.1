@@ -1,9 +1,8 @@
 import time
 import pytest
 import numpy as np
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.module.spectrum import Spectrum
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.module import MassSpectrumSet, Spectrum
+from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
 from massflow.tools.logger import get_logger
 

@@ -34,8 +34,7 @@ License: See LICENSE file in project root
 """
 from typing import Union, Optional, Sequence
 import numpy as np
-from massflow.module.spectrum_imzml import SpectrumImzML
-from massflow.module.spectrum import Spectrum
+from massflow.module import SpectrumImzML, Spectrum
 from massflow.tools.logger import get_logger
 from massflow.preprocess.helper.peak_align_helper import align_spectrum
 from massflow.preprocess.helper.filter_helper import smoother

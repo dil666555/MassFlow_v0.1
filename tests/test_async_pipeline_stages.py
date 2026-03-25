@@ -5,8 +5,8 @@ from threading import Event, Lock
 
 import pytest
 
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
-from massflow.module.mass_spectrum_set import MassSpectrumSet
+from massflow.data_manager import MSDataManagerImzML
+from massflow.module import MassSpectrumSet
 from massflow.preprocess.batch_pre_fun import BatchPreprocess
 from massflow.preprocess.dm_pre_fun import Preprocess
 
@@ -89,7 +89,7 @@ class TestAsyncPipelineStagesMemory:
         error_holder: list[BaseException] = []
         error_lock = Lock()
 
-        from massflow.preprocess.async_pipeline import BatchChunk
+        from massflow.preprocess.preprocessor import BatchChunk
 
         queue_ab.put(BatchChunk(index=0, batch=source_batch))
         queue_ab.put(None)
@@ -146,7 +146,7 @@ class TestAsyncPipelineStagesMemory:
         error_holder: list[BaseException] = []
         error_lock = Lock()
 
-        from massflow.preprocess.async_pipeline import BatchChunk
+        from massflow.preprocess.preprocessor import BatchChunk
 
         queue_bc.put(BatchChunk(index=0, batch=list(processed_batch)))
         queue_bc.put(None)

@@ -3,8 +3,8 @@ from typing import Optional
 import pytest
 import numpy as np
 from massflow.tools.logger import get_logger
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
+from massflow.module import MassSpectrumSet
+from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess.dm_pre_fun import Preprocess
 from massflow.r_preprocess import set_default_r_home
 

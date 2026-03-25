@@ -1,8 +1,8 @@
 import time
 import pytest
-from massflow.data_manager.ms_data_manager_imzml import MSDataManagerImzML
-from massflow.module.mass_spectrum_set import MassSpectrumSet
-from massflow.preprocess.dm_pre_fun import Preprocess
+from massflow.data_manager import MSDataManagerImzML
+from massflow.module import MassSpectrumSet
+from massflow.preprocess import Preprocessor
 from massflow.tools.logger import get_logger
 
 logger = get_logger("test_async_pipeline")
@@ -37,7 +37,7 @@ class TestAsyncPipelineProfile:
 
         def run_pipeline_once() -> int:
             processed_data_manager = (
-                Preprocess.pipeline(
+                Preprocessor(
                     data_manager=async_data_manager,
                     batch_size=batch_size,
                     queue_ab_size=queue_ab_size,

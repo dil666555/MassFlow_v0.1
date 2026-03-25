@@ -1,7 +1,6 @@
 from typing import Optional, Sequence
 import numpy as np
-from massflow.module.spectrum_imzml import SpectrumImzML
-from massflow.module.spectrum import Spectrum
+from massflow.module import SpectrumImzML, Spectrum
 from massflow.tools.logger import get_logger
 from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
 from massflow.preprocess.helper.filter_helper import smoother
