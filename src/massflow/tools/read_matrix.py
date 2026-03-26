@@ -36,10 +36,10 @@ class IbdFileLayout:
 # Extract layout from ImzMLParser
 _PRECISION_BYTES: dict[str, int] = {"f": 4, "d": 8, "i": 4, "l": 8}
 _PRECISION_DTYPE: dict[str, np.dtype] = {
-    "f": np.float32,
-    "d": np.float64,
-    "i": np.int32,
-    "l": np.int64,
+    "f": np.dtype(np.float32),
+    "d": np.dtype(np.float64),
+    "i": np.dtype(np.int32),
+    "l": np.dtype(np.int64),
 }
 _COMPRESSION_ACCESSIONS = {
     "MS:1000574",   # zlib compression
@@ -51,8 +51,8 @@ _COMPRESSION_ACCESSIONS = {
 def extract_ibd_layout(
     parser,
     ibd_path: str,
-    out_intensity_dtype: np.dtype = np.float32,
-    out_mz_dtype: np.dtype = np.float64,
+    out_intensity_dtype: np.dtype = np.dtype(np.float32),
+    out_mz_dtype: np.dtype = np.dtype(np.float64),
 ) -> IbdFileLayout:
     """Extract .ibd file layout information from ImzMLParser in one pass."""
 
@@ -74,8 +74,8 @@ def extract_ibd_layout(
         mz_offsets=parser.mzOffsets,
         mz_lengths=parser.mzLengths,
         coordinates=parser.coordinates,
-        file_intensity_dtype=_PRECISION_DTYPE.get(parser.intensityPrecision, np.float32),
-        file_mz_dtype=_PRECISION_DTYPE.get(parser.mzPrecision, np.float64),
+        file_intensity_dtype=_PRECISION_DTYPE.get(parser.intensityPrecision, np.dtype(np.float32)),
+        file_mz_dtype=_PRECISION_DTYPE.get(parser.mzPrecision, np.dtype(np.float64)),
         out_intensity_dtype=out_intensity_dtype,
         out_mz_dtype=out_mz_dtype,
         intensity_element_bytes=_PRECISION_BYTES.get(parser.intensityPrecision, 4),

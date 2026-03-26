@@ -295,7 +295,7 @@ def locmin_baseline(
 
         smooth_kind = (smooth or "none").strip().lower()
         if smooth_kind == "loess":
-            from massflow.preprocess.helper.filter_helper import smooth_signal_loess
+            from massflow.preprocess.helper.noise_reduction_helper import smooth_signal_loess
 
             span = float(span)
             window = int(max(5, min(n, round(span * n))))

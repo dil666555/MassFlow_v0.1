@@ -42,23 +42,22 @@ class Preprocessor(PreprocessorAPI):
         "peak_align": 50,
     }
 
+
     def __init__(
         self,
         data_manager: MSDataManager,
         *,
         batch_size: int = 256,
-        queue_ab_size: int = 3,
-        queue_bc_size: int = 3,
-        temp_dir: str | None = None,
+        queue_ab_size: int = 1,
+        queue_bc_size: int = 1,
+        temp_dir: str | None = "./temp",
         keep_order: bool = False,
-    ):
-        if data_manager is None:
-            raise ValueError("data_manager must be provided for async preprocess pipeline.")
-        if batch_size <= 0 or batch_size > 9056:
-            logger.error(f"Invalid batch_size: {batch_size}. batch_size must be a positive integer between 1 and 9056.")
-            raise ValueError("batch_size must be a positive integer between 1 and 9056.")
-        if queue_ab_size <= 0 or queue_bc_size <= 0:
-            raise ValueError("queue_ab_size and queue_bc_size must be positive integers.")
+    ): # pylint: disable=super-init-not-called
+        if data_manager is None or batch_size <= 0 or batch_size > 9056 or queue_ab_size <= 0 or queue_bc_size <= 0 :
+            logger.error(f"Invalid parameter values. please check:"
+                         f"data_manager={data_manager}, batch_size={batch_size},"
+                         f"queuesize={queue_ab_size} & {queue_bc_size}? <0?")
+            raise ValueError("Invalid parameter values.")
 
         self.data_manager = data_manager
         self.batch_size = batch_size

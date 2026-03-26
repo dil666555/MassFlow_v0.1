@@ -37,7 +37,7 @@ import numpy as np
 from massflow.module import SpectrumImzML, Spectrum
 from massflow.tools.logger import get_logger
 from massflow.preprocess.helper.peak_align_helper import align_spectrum
-from massflow.preprocess.helper.filter_helper import smoother
+from massflow.preprocess.helper.noise_reduction_helper import smoother
 from massflow.preprocess.helper.normalizer_helper import normalizer
 from massflow.preprocess.helper.baseline_correction_helper import baseline_corrector
 from massflow.preprocess.helper.est_noise_helper import estimator
@@ -259,6 +259,9 @@ class SpectrumPreprocess:
         intensity = data.intensity
         index = data.mz_list
 
+        if intensity is None or index is None:
+            raise ValueError("Input spectrum must have both intensity and mz_list data.")
+
         corrected_intensity, _ = baseline_corrector(
             intensity,
             index=index,
@@ -303,8 +306,8 @@ class SpectrumPreprocess:
 
         Parameters:
             data (SpectrumBaseModule): Spectrum to denoise.
-            method (str): One of {'ma','ma_numba','ma_loop','gaussian','gaussian_numba','savgol','savgol_numba',
-            'wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
+            method (str): One of {'ma','ma_numba','gaussian','gaussian_numba','savgol','savgol_numba',
+            'wavelet','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
             window (int): Window size or neighbor count depending on method.
             sd (float, optional): Gaussian scale parameter.
             coef (np.ndarray, optional): Custom kernel for 'ma'.

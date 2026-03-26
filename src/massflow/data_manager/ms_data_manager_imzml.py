@@ -11,7 +11,7 @@ License: See LICENSE file in project root
 import os
 from contextlib import nullcontext
 from concurrent.futures import as_completed
-from typing import Generator
+from typing import Generator,Any
 import numpy as np
 from pyimzml.ImzMLParser import ImzMLParser
 from massflow.data_manager.ms_data_manager import MSDataManager
@@ -217,7 +217,7 @@ class MSDataManagerImzML(MSDataManager):
         batch_size: int = 256,
         include_mz: bool = True,
         max_threads: int = 0,
-    ):
+    ) -> Generator[tuple, Any, None]:
         """
         Read data directly from .ibd into pre-allocated NumPy matrices.
 
@@ -239,8 +239,8 @@ class MSDataManagerImzML(MSDataManager):
         layout = matrix_tools.extract_ibd_layout(
             self.parser,
             self.ibd_filepath,
-            out_intensity_dtype=self.intensity_dtype,
-            out_mz_dtype=self.mz_dtype,
+            out_intensity_dtype=np.dtype(self.intensity_dtype),
+            out_mz_dtype=np.dtype(self.mz_dtype),
         )
 
         # Determine data mode

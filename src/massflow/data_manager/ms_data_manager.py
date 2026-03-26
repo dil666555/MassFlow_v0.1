@@ -11,7 +11,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from typing import Generator
+from typing import Generator,Any
 import numpy as np
 from massflow.tools.logger import get_logger
 from massflow.module import MassSpectrumSet, Spectrum
@@ -82,7 +82,8 @@ class MSDataManager(ABC):
                 raise ValueError
             self.target_locs = target_locs
         else:
-            self.target_locs = ([0, 0], [float('inf'), float('inf')])
+            max_coord = int(np.iinfo(np.int32).max)
+            self.target_locs = ([0, 0], [int(np.iinfo(np.int32).max), int(np.iinfo(np.int32).max)])
 
 
 ############# Data define part #############
@@ -146,7 +147,7 @@ class MSDataManager(ABC):
 ############# Method define part #############
     @abstractmethod
     def copy_meta(self, source_dm: "MSDataManager"):
-        pass
+        ...
 
     @abstractmethod
     def preload_hook(self, *args, **kwargs):
@@ -169,11 +170,11 @@ class MSDataManager(ABC):
         """Get a multi-threaded batch generator."""
 
     @abstractmethod
-    def matrix_generator(self, batch_size: int = 256, include_mz: bool = True, max_threads: int = 0):
-        """Get a multi-threaded matrix generator."""
+    def matrix_generator(self, batch_size: int = 256, include_mz: bool = True, max_threads: int = 0) -> Generator[tuple, Any, None]:
+        ...
+
 
 ############# Method part #############
-
     def inspect_data(self, inspect_target=None):
         """Inspect the data structure of the MSI object."""
 
@@ -288,6 +289,7 @@ class MSDataManager(ABC):
         for spec in batch:
             spec.swap_out2disk(writer=writer)
 
+
     def swap_matrix_data_out2disk(
         self,
         mz_data: np.ndarray | None,
@@ -312,6 +314,7 @@ class MSDataManager(ABC):
             intensity = intensity_row[:length]
 
             self.writer.add_spectrum(mz, intensity, tuple(coord.tolist()))
+
 
     def __enter__(self):
         return self

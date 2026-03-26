@@ -3,20 +3,24 @@ import numpy as np
 from massflow.module import SpectrumImzML, Spectrum
 from massflow.tools.logger import get_logger
 from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
-from massflow.preprocess.helper.filter_helper import smoother
+from massflow.preprocess.helper.noise_reduction_helper import smoother
 from massflow.preprocess.helper.normalizer_helper import normalizer
 
 logger = get_logger("massflow.preprocess")
+
 
 class BatchPreprocess:
     """
     A class for batch preprocessing of mass spectrometry data.
     """
+
     @staticmethod
-    def peak_align_batch(batch_spectra: Sequence[Spectrum],
-                         ref: np.ndarray,
-                         tolerance: float,
-                         units: str = "ppm") -> Sequence[SpectrumImzML]:
+    def peak_align_batch(
+        batch_spectra: Sequence[Spectrum],
+        ref: np.ndarray,
+        tolerance: float,
+        units: str = "ppm",
+    ) -> Sequence[SpectrumImzML]:
         """
         Align a batch of spectra to a reference m/z axis.
 
@@ -30,28 +34,29 @@ class BatchPreprocess:
         - Aligned spectra as a sequence of SpectrumImzML objects.
         """
         if ref is None or tolerance is None:
-            logger.error("Reference m/z axis and tolerance must be provided for alignment.")
+            logger.error(
+                "Reference m/z axis and tolerance must be provided for alignment."
+            )
             raise ValueError("Reference m/z axis and tolerance are required.")
-            
+
         aligned_spectra = []
         for spectrum in batch_spectra:
             aligned_spectrum = SpectrumPreprocess.peak_align_spectrum(
-                spectrum=spectrum,
-                ref=ref,
-                tolerance=tolerance,
-                units=units
+                spectrum=spectrum, ref=ref, tolerance=tolerance, units=units
             )
             aligned_spectra.append(aligned_spectrum)
         return aligned_spectra
 
     @staticmethod
-    def peak_pick_batch(batch_spectra: Sequence[Spectrum],
-                        width: int | Sequence[int] = 2,
-                        method: str = 'origin',
-                        relheight: float = 0.012,
-                        snr: float = 2.0,
-                        return_type: str = 'height',
-                        use_numba: bool = True) -> Sequence[SpectrumImzML]:
+    def peak_pick_batch(
+        batch_spectra: Sequence[Spectrum],
+        width: int | Sequence[int] = 2,
+        method: str = "origin",
+        relheight: float = 0.012,
+        snr: float = 2.0,
+        return_type: str = "height",
+        use_numba: bool = True,
+    ) -> Sequence[SpectrumImzML]:
         """
         Perform peak picking on a batch of spectra.
 
@@ -76,7 +81,7 @@ class BatchPreprocess:
                 relheight=relheight,
                 snr=snr,
                 return_type=return_type,
-                use_numba=use_numba
+                use_numba=use_numba,
             )
             picked_spectra.append(picked_spectrum)
         return picked_spectra
@@ -101,8 +106,7 @@ class BatchPreprocess:
 
         Parameters:
         - batch_spectra: Sequence of Spectrum objects to be denoised.
-        - method: One of {'ma','ma_numba','ma_loop','gaussian','gaussian_numba','savgol','savgol_numba','wavelet','ma_ns','ma_ns_numba','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba',
-          'ma_ns_numba','gaussian_ns_numba','bi_ns_numba'}.
+                - method: One of {'ma','ma_numba','gaussian','gaussian_numba','savgol','savgol_numba','wavelet','gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
         - window: Window size or neighbor count depending on method.
         - sd: Gaussian scale parameter.
         - sd_intensity: Intensity scale for bilateral method.
@@ -121,14 +125,13 @@ class BatchPreprocess:
         if not batch_spectra:
             return []
 
-
-        # Specialized 2D Numba acceleration path for savgol_numba, ma_numba, gaussian_numba:
+        # Specialized 2D Numba acceleration path for savgol_numba, gaussian_numba, ma_numba:
         # At the batch level, first stack spectra into a (n_spectra, n_mz) matrix,
         # then call the smoother once to trigger the parallel implementation
         # in noise_reduction_numba.
-        if method in {"savgol_numba", "ma_numba", "gaussian_numba", "ma_loop"}:
+        if method in {"savgol_numba", "gaussian_numba", "ma_numba"}:
             # Handle variable lengths via padding
-            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32) # type: ignore
+            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32)  # type: ignore
             max_len = np.max(lengths)
             n_spectra = len(batch_spectra)
 
@@ -137,7 +140,7 @@ class BatchPreprocess:
             for i, s in enumerate(batch_spectra):
                 # Copy data into buffer
                 valid_len = lengths[i]
-                intensities_padded[i, :valid_len] = s.intensity.astype(np.float32, copy=False) # type: ignore
+                intensities_padded[i, :valid_len] = s.intensity.astype(np.float32, copy=False)  # type: ignore
 
             smoothed = smoother(
                 intensities_padded,
@@ -220,20 +223,20 @@ class BatchPreprocess:
         # Path A: High Performance Batching (Numba)
         # Try to use the direct Numba backend if available and method is supported.
         # -----------------------------------------------------------------
-        numba_supported_methods = {'tic_numba', 'rms_numba', 'median_numba'}
-        
+        numba_supported_methods = {"tic_numba", "rms_numba", "median_numba"}
+
         # Check availability of Numba implementation locally
         if method in numba_supported_methods:
             # 1. Construct 2D Matrix with padding
             n_spectra = len(batch_spectra)
-            
+
             # Calculate lengths for each spectrum
-            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32) # type: ignore
+            lengths = np.array([s.intensity.size for s in batch_spectra], dtype=np.int32)  # type: ignore
             max_len = np.max(lengths) if n_spectra > 0 else 0
-            
+
             if max_len > 0:
                 intensities_padded = np.zeros((n_spectra, max_len), dtype=np.float32)
-                
+
                 # Fill the matrix
                 for i, s in enumerate(batch_spectra):
                     valid_len = lengths[i]
@@ -248,21 +251,21 @@ class BatchPreprocess:
                     scale=scale,
                     scale_method=scale_method,
                     lengths=lengths,
-                    numba_max_threads=numba_max_threads
+                    numba_max_threads=numba_max_threads,
                 )
 
                 # 3. Reconstruct SpectrumImzML objects
                 normalized_spectra_numba: list[SpectrumImzML] = []
                 for i, spectrum in enumerate(batch_spectra):
                     valid_len = lengths[i]
-                    
+
                     # Slice back to original length
                     processed_intensity = normalized_matrix[i, :valid_len]
-                    
+
                     normalized_spectra_numba.append(
                         SpectrumImzML(
                             coordinates=spectrum.coordinate,
-                            mz_list=spectrum.mz_list, 
+                            mz_list=spectrum.mz_list,
                             intensity=processed_intensity,
                         )
                     )
@@ -276,13 +279,10 @@ class BatchPreprocess:
         for spectrum in batch_spectra:
             # Re-use the single spectrum processing logic
             normalized_spectrum = SpectrumPreprocess.normalization_spectrum(
-                data=spectrum,
-                method=method,
-                scale=scale,
-                scale_method=scale_method
+                data=spectrum, method=method, scale=scale, scale_method=scale_method
             )
             normalized_spectra.append(normalized_spectrum)
-            
+
         return normalized_spectra
 
     @staticmethod
