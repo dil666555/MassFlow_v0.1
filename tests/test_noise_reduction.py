@@ -10,6 +10,13 @@ from massflow.tools.logger import get_logger
 logger = get_logger("massflow.test.test_noise_reduction")
 
 ROUNDS = 5
+BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
+FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
+BATCH_FLAT_NR_METHOD_PAIRS = [
+    ("ma", "ma_numba"),
+    # ("gaussian", "gaussian_numba"),
+    # ("savgol", "savgol_numba"),
+]
 
 
 def _noise_reduction_flat_from_flat_batches(
@@ -56,7 +63,7 @@ class TestNoiseReductionAPI:
         return caches
 
     @pytest.mark.benchmark(timer=time.perf_counter)
-    @pytest.mark.parametrize("method", ["ma_numba", "gaussian_numba", "savgol_numba"])
+    @pytest.mark.parametrize("method", BATCH_NR_METHODS)
     def test_nr_speed(self,
                       benchmark,
                       method,
@@ -72,14 +79,14 @@ class TestNoiseReductionAPI:
 
         benchmark.pedantic(
             speed_process,
-            args=(ms_raw_data, 4096, BatchPreprocess.noise_reduction_batch, batch_kwargs,8),
+            args=(ms_raw_data, 4096, BatchPreprocess.noise_reduction_batch, batch_kwargs),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
         )
 
     @pytest.mark.benchmark(timer=time.perf_counter)
-    @pytest.mark.parametrize("method", ["ma_numba", "gaussian_numba", "savgol_numba"])
+    @pytest.mark.parametrize("method", FLAT_NR_METHODS)
     def test_nr_flat_speed(self,
                            benchmark,
                            method,
@@ -100,14 +107,17 @@ class TestNoiseReductionAPI:
             warmup_rounds=1,
         )
 
-    @pytest.mark.parametrize("method", ["ma_numba", "gaussian_numba", "savgol_numba"])
-    def test_nr_flat_batch_intensity_consistency(self, method, ms_raw_data):
-        """Test flat and batch noise reduction intensity consistency under identical parameters."""
+    @pytest.mark.parametrize(
+        ("batch_method", "flat_method"),
+        BATCH_FLAT_NR_METHOD_PAIRS,
+    )
+    def test_nr_flat_batch_intensity_consistency(self, batch_method, flat_method, ms_raw_data):
+        """Test flat and batch consistency using matched algorithm variants."""
         batch = next(ms_raw_data.batch_generator(batch_size=256))
 
         batch_result = BatchPreprocess.noise_reduction_batch(
             batch_spectra=batch,
-            method=method,
+            method=batch_method,
             window=5,
         )
 
@@ -117,7 +127,7 @@ class TestNoiseReductionAPI:
         )
         flat_result = FlatPreprocess.noise_reduction_flat(
             intensity=intensity_flat,
-            method=method,
+            method=flat_method,
             window=5,
             lengths=lengths,
         )

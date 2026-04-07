@@ -39,7 +39,6 @@ def _input_validation(
     """
     # Validate intensity (must be non-empty 1D NumPy array)
     if (not isinstance(intensity, np.ndarray)
-        or intensity.ndim != 1
         or intensity.size == 0
     ):
         logger.error("intensity must be a numpy array")
@@ -125,8 +124,7 @@ def smooth_signal_ma(
     # Convolution filtering
     y = np.convolve(xpad, coef, mode="valid")  # type: ignore
 
-    # Store as float32 to reduce memory footprint
-    return y.astype(np.float32)
+    return y
 
 
 def smooth_signal_gaussian(

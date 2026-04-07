@@ -47,9 +47,6 @@ def speed_process(
 ) :
 
     apply_numba_runtime(override_workers=numba_max_threads)
-    logger.info(f"numba treads set to {get_global_numba_runtime()['max_workers']}\r\n"
-                f"numba system info: {get_num_threads()} threads")
-
     # total_batches = get_batch_total_num(data_manager, batch_size)
 
     for batch_idx, batch in enumerate(data_manager.batch_generator(batch_size=batch_size,max_threads=16), start=1):

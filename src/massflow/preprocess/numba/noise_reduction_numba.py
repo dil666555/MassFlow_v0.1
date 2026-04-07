@@ -29,7 +29,7 @@ def _ma_core(
     right_edge = signal[valid_len - 1]
 
     # Initialize running sum for the first element
-    current_sum = left_edge * (radius + 1)
+    current_sum = left_edge * np.float64(radius + 1)
     for j in range(1, radius + 1):
         current_sum += signal[j] if j < valid_len else right_edge
 
@@ -40,8 +40,8 @@ def _ma_core(
         leaving_idx = i - 1 - radius
         entering_idx = i + radius
 
-        leaving_val = left_edge if leaving_idx < 0 else signal[leaving_idx]
-        entering_val = right_edge if entering_idx >= valid_len else signal[entering_idx]
+        leaving_val = left_edge if leaving_idx < 0 else np.float64(signal[leaving_idx])
+        entering_val = right_edge if entering_idx >= valid_len else np.float64(signal[entering_idx])
 
         current_sum += entering_val - leaving_val
         out[i] = current_sum * inv_window
@@ -57,7 +57,7 @@ def _lengths_to_offsets(lengths: np.ndarray) -> np.ndarray:
     return offsets
 
 
-@njit(parallel=True, cache=True, fastmath=False)
+@njit(parallel=True, cache=True, fastmath=True)
 def _ma_flat_jit(flat: np.ndarray, window: int, lengths: np.ndarray) -> np.ndarray:
     """Flat batch entry point for ma_numba."""
     res = np.empty(flat.size, dtype=np.float32)
