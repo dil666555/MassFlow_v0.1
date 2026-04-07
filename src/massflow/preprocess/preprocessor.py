@@ -11,6 +11,7 @@ from massflow.preprocess.api import PreprocessorAPI, TaskScope
 from massflow.preprocess.helper.peak_align_helper import compute_reference
 from massflow.preprocess.batch_pre_fun import BatchPreprocess
 from massflow.tools.logger import get_logger
+from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 
 logger = get_logger("massflow.preprocess.async_pipeline")
 
@@ -58,6 +59,7 @@ class Preprocessor(PreprocessorAPI):
         queue_bc_size: int = 1,
         temp_dir: str | None = "./temp",
         keep_order: bool = False,
+        numba_max_threads: Optional[int] = None,
     ): # pylint: disable=super-init-not-called
         if data_manager is None or batch_size <= 0 or batch_size > 9056 or queue_ab_size <= 0 or queue_bc_size <= 0 :
             logger.error(f"Invalid parameter values. please check:"
@@ -71,6 +73,7 @@ class Preprocessor(PreprocessorAPI):
         self.queue_ab_size = queue_ab_size
         self.queue_bc_size = queue_bc_size
         self.keep_order = keep_order
+        self.numba_max_threads = numba_max_threads
 
         self._tasks: list[PreprocessTask] = []
         self._task_sequence = 0
@@ -155,6 +158,7 @@ class Preprocessor(PreprocessorAPI):
     ) -> None:
         """Stage B: middleware; runs ordered preprocessing tasks for each batch."""
         try:
+            apply_numba_runtime(override_workers=self.numba_max_threads)
             while True:
                 chunk = queue_ab.get()
                 if chunk is None:

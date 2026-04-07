@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, Literal, Optional, Protocol, Self, Sequence
 
 import numpy as np
-
 from massflow.preprocess.batch_pre_fun import BatchPreprocess
 from massflow.r_preprocess.adapter import CardinalAdapter
 
@@ -40,7 +39,6 @@ class PreprocessorAPI(_TaskRegistrar):
         baseline_scale: float = 1.0,
         m: int | None = None,
         decreasing: bool = True,
-        numba_max_threads: Optional[int] = None,
     ) -> Self:
         """Register baseline correction batch task."""
         return self._register_task(
@@ -59,13 +57,12 @@ class PreprocessorAPI(_TaskRegistrar):
             baseline_scale=baseline_scale,
             m=m,
             decreasing=decreasing,
-            numba_max_threads=numba_max_threads,
         )
 
     def noise_reduction(
         self,
         *,
-        method: str = "ma",
+        method: str = "ma_numba",
         window: int = 5,
         sd: float | None = None,
         sd_intensity: float | None = None,
@@ -76,7 +73,6 @@ class PreprocessorAPI(_TaskRegistrar):
         delta: float = 1.0,
         wavelet: str = "db4",
         threshold_mode: str = "soft",
-        numba_max_threads: Optional[int] = 10,
     ) -> Self:
         """Register noise reduction batch task."""
         return self._register_task(
@@ -94,7 +90,6 @@ class PreprocessorAPI(_TaskRegistrar):
             delta=delta,
             wavelet=wavelet,
             threshold_mode=threshold_mode,
-            numba_max_threads=numba_max_threads,
         )
 
     def normalization(
@@ -103,7 +98,6 @@ class PreprocessorAPI(_TaskRegistrar):
         scale_method: str = "none",
         method: str = "tic",
         scale: float = 1.0,
-        numba_max_threads: Optional[int] = None,
     ) -> Self:
         """Register normalization batch task."""
         return self._register_task(
@@ -113,7 +107,6 @@ class PreprocessorAPI(_TaskRegistrar):
             scale_method=scale_method,
             method=method,
             scale=scale,
-            numba_max_threads=numba_max_threads,
         )
 
     def peak_align(

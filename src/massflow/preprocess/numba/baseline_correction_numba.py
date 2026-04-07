@@ -1,6 +1,5 @@
-from typing import Optional
 import numpy as np
-from numba import jit, prange, set_num_threads
+from numba import jit, prange
 
 
 @jit(nopython=True, fastmath=True, cache=True, parallel=True)
@@ -45,7 +44,6 @@ def snip_baseline_numba(
     intensity: np.ndarray,
     m: int | None = None,
     decreasing: bool = True,
-    numba_max_threads: Optional[int] = None,
 ) -> np.ndarray:
     """Compute the SNIP baseline for a 1D spectrum.
 
@@ -58,8 +56,6 @@ def snip_baseline_numba(
     Returns:
         Baseline array (float32).
     """
-    if numba_max_threads is not None:
-        set_num_threads(numba_max_threads)
 
     if intensity.ndim != 1:
         raise ValueError("intensity must be a 1D array")

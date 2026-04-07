@@ -3,13 +3,14 @@ Author: MassFlow Development Team Bionet/NeoNexus lyk
 License: See LICENSE file in project root
 """
 
-from typing import Optional
+from inspect import signature
+from typing import Any, Callable, Optional
 import numpy as np
 import pywt
 from scipy.signal import savgol_filter
 from scipy.stats import norm
 from scipy import stats
-from scipy import signal, linalg
+from scipy import signal as scipy_signal, linalg
 from massflow.preprocess.numba.noise_reduction_numba import ns_signal_pre
 from massflow.tools.logger import get_logger
 from massflow.module import Spectrum
@@ -35,33 +36,23 @@ def _input_validation(
 ) -> None:
     """
     Unified validation and normalization for smoothing-related parameters.
-
-    Performs validation only; does not normalize or mutate values.
-
-    Raises:
-        TypeError: `intensity` is not a NumPy array.
-        ValueError: `intensity` is not 1D or empty; invalid `window/k/p/sd/...`;
-            or `threshold_mode` is not 'soft'/'hard'.
     """
     # Validate intensity (must be non-empty 1D NumPy array)
-    if not isinstance(intensity, np.ndarray):
+    if (not isinstance(intensity, np.ndarray)
+        or intensity.ndim != 1
+        or intensity.size == 0
+    ):
         logger.error("intensity must be a numpy array")
-        raise TypeError("intensity must be a numpy array")
-    if intensity.ndim != 1 or intensity.size == 0:
-        logger.error("intensity must be a non-empty 1D array")
-        raise ValueError("intensity must be a non-empty 1D array")
+        raise TypeError("intensity must be a non-empty 1D numpy array")
 
     # Index check (if provided, must be 1D and match intensity length)
     if index is not None:
-        if (
-            not isinstance(index, np.ndarray)
+        if (not isinstance(index, np.ndarray)
             or index.ndim != 1
             or index.size != intensity.size
         ):
             logger.error("index must be a 1D array with the same length as intensity")
-            raise ValueError(
-                "index must be a 1D array with the same length as intensity"
-            )
+            raise ValueError( "index must be a 1D array with the same length as intensity")
 
     # Validate window (if provided): positive integer
     if window is not None:
@@ -79,16 +70,12 @@ def _input_validation(
     if k is not None:
         if not isinstance(k, int) or k < 1 or k > intensity.size:
             logger.error("k must be a positive integer not exceeding intensity length")
-            raise ValueError(
-                "k must be a positive integer not exceeding intensity length"
-            )
+            raise ValueError("k must be a positive integer not exceeding intensity length")
+
     if p is not None:
         if not isinstance(p, int) or p < 1:
             logger.error("p must be a positive integer")
             raise ValueError("p must be a positive integer")
-
-    # No normalization; return None on success
-    return None
 
 
 def smooth_signal_ma(
@@ -295,7 +282,7 @@ def smooth_signal_wavelet(
 def smooth_ns_signal_gaussian(
     intensity: np.ndarray,
     index: np.ndarray,
-    k: int = 5,
+    window: int = 5,
     p: int = 1,
     sd: Optional[float] = None,
 ):
@@ -305,7 +292,7 @@ def smooth_ns_signal_gaussian(
     Parameters:
         intensity (np.ndarray): Input 1D intensity array.
         index (np.ndarray): 1D coordinate array aligned with `intensity`.
-        k (int): Number of neighbors. Must be >= 1.
+        window (int): Number of neighbors. Must be >= 1.
         p (int): Minkowski metric parameter for KD-tree query. Must be >= 1.
         sd (float, optional): Gaussian scale over neighbor distances; auto-estimated if None.
 
@@ -316,14 +303,14 @@ def smooth_ns_signal_gaussian(
         ValueError: If `k` or `p` is not positive.
     """
 
-    neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=k, p=p)
+    neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=window, p=p)
 
     if len(dists.shape) < 2:
         dists = dists.reshape(-1, 1)
     dists_max = np.max(dists, axis=1)
 
     sd = np.median(dists_max) / 2.0 if sd is None else sd
-    if sd <= 0:
+    if sd is None or sd <= 0:
         logger.error("sd must be positive")
         raise ValueError("sd must be positive")
 
@@ -347,9 +334,9 @@ def smooth_ns_signal_gaussian(
 def smooth_ns_signal_bi(
     intensity: np.ndarray,
     index: np.ndarray,
-    k: int = 5,
+    window: int = 5,
     p: int = 2,
-    sd_dist: Optional[float] = None,
+    sd: Optional[float] = None,
     sd_intensity: Optional[float] = None,
 ):
     """
@@ -358,7 +345,7 @@ def smooth_ns_signal_bi(
     Parameters:
         intensity (np.ndarray): Input 1D intensity array.
         index (np.ndarray): 1D coordinate array aligned with `intensity`.
-        k (int): Number of neighbors. Must be >= 1.
+        window (int): Number of neighbors. Must be >= 1.
         p (int): Minkowski metric for KD-tree queries (distance).
         sd_dist (float, optional): Spatial Gaussian scale over neighbor distances.
         sd_intensity (float, optional): Intensity Gaussian scale; MAD-based if None.
@@ -369,19 +356,19 @@ def smooth_ns_signal_bi(
     Raises:
         ValueError: If `k` or `p` is not positive.
     """
-    neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=k, p=p)
+    neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=window, p=p)
 
     if len(dists.shape) < 2:
         dists = dists.reshape(-1, 1)
     dists_max = np.max(dists, axis=1)
 
-    sd_dist = np.median(dists_max) / 2.0 if sd_dist is None else sd_dist
-    if sd_dist <= 0:
+    sd = np.median(dists_max) / 2.0 if sd is None else sd
+    if sd is None or sd <= 0:
         logger.error("sd_dist must be positive")
         raise ValueError("sd_dist must be positive")
 
     # dist_ = np.exp(-dists**2 / (2 * sd**2))
-    exponent = -0.5 * (dists / sd_dist) ** 2
+    exponent = -0.5 * (dists / sd) ** 2
     lower = np.log(
         np.finfo(exponent.dtype if hasattr(exponent, "dtype") else np.float64).tiny
     )
@@ -476,7 +463,7 @@ def smooth_signal_loess(intensity: np.ndarray, window: int = 5):
     q, _ = linalg.qr(v, mode="economic")  # type: ignore
 
     alpha = np.dot(q[halfw - 1,], q.transpose())  # type: ignore
-    yhat = signal.lfilter(alpha * weight, 1, y)
+    yhat = scipy_signal.lfilter(alpha * weight, 1, y)
     yhat[int(halfw + 1) - 1 : -halfw] = yhat[int(window - 1) - 1 : -1]  # type: ignore
 
     x1 = np.arange(1.0, (window - 1.0) + 1)
@@ -498,8 +485,10 @@ def smooth_signal_loess(intensity: np.ndarray, window: int = 5):
 
 
 def smoother(
-    intensity: np.ndarray,
+    intensity: Optional[np.ndarray] = None,
     index: Optional[np.ndarray] = None,
+    *,
+    flat: Optional[np.ndarray] = None,
     method: str = "ma",
     window: int = 5,
     sd: Optional[float] = None,
@@ -512,13 +501,13 @@ def smoother(
     wavelet: str = "db4",
     threshold_mode: str = "soft",
     lengths: Optional[np.ndarray] = None,
-    numba_max_threads: Optional[int] = None,
 ):
     """
     Unified smoothing entry for multiple methods.
 
     Parameters:
-        intensity (np.ndarray): 1D intensity array.
+        intensity (Optional[np.ndarray]): Legacy 1D intensity input.
+        flat (Optional[np.ndarray]): Flat 1D intensity input. When provided, it is preferred over `intensity`.
         index (Optional[np.ndarray]): 1D coordinate array aligned with `intensity` for NS methods.
         method (str): One of {'ma','ma_numba','gaussian','gaussian_numba','savgol','savgol_numba','wavelet',
         'gaussian_ns','gaussian_ns_numba','bi_ns','bi_ns_numba'}.
@@ -534,87 +523,62 @@ def smoother(
             This is only used if deriv > 0. Default is 1.0.
         wavelet (str): Wavelet family for wavelet denoising.
         threshold_mode (str): 'soft' or 'hard' for wavelet thresholding.
-        lengths (Optional[np.ndarray]): Array of valid lengths for each spectrum in a 2D batch.
-        numba_max_threads (Optional[int]): Maximum number of threads for Numba parallel execution.
+        lengths (Optional[np.ndarray]): Array of valid lengths for each spectrum in flat mode.
 
     Returns:
         np.ndarray: Smoothed intensity array.
 
     Raises:
         ValueError: If `method` is unsupported or parameter combinations are invalid.
-        TypeError: If `intensity` is invalid or `coef` is not 1D.
+        TypeError: If input intensity is invalid or `coef` is not 1D.
     """
+    def _dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> np.ndarray:
+        supported = signature(func).parameters
+        filtered_kwargs = {name: value for name, value in kwargs.items() if name in supported}
+        result = func(**filtered_kwargs)
+        return np.asarray(result)
+
     # Normalize method and validate supported set
     method_norm = (method or "ma").strip().lower()
 
-    supported = {
-        "ma",
-        "gaussian",
-        "savgol",
-        "wavelet",
-        "gaussian_ns",
-        "bi_ns",
-        "savgol_numba",
-        "gaussian_ns_numba",
-        "bi_ns_numba",
-        "gaussian_numba",
-        "ma_numba",
+    input_signal = flat if flat is not None else intensity
+    if input_signal is None:
+        raise TypeError("Either flat or intensity must be provided")
+
+    _input_validation(input_signal, index, window=window, sd=sd, k=window if "ns" in method_norm else None, p=p)
+
+    method_map: dict[str, Callable[..., Any]] = {
+        "ma": smooth_signal_ma,
+        "gaussian": smooth_signal_gaussian,
+        "savgol": smooth_signal_savgol,
+        "savgol_numba": smooth_signal_savgol_numba,
+        "ma_numba": smooth_signal_ma_numba,
+        "gaussian_numba": smooth_signal_gaussian_numba,
+        "wavelet": smooth_signal_wavelet,
+        "gaussian_ns": smooth_ns_signal_gaussian,
+        "bi_ns": smooth_ns_signal_bi,
+        "gaussian_ns_numba": smooth_ns_signal_gaussian_numba,
+        "bi_ns_numba": smooth_ns_signal_bi_numba,
     }
-    if method_norm not in supported:
-        logger.error("Unsupported smoothing method: %s. Use one of: %s",method,", ".join(supported),)
+
+    target_func = method_map.get(method_norm)
+    if target_func is None:
         raise ValueError(f"Unsupported smoothing method: {method}")
 
-    # Validate shared parameters only (no normalization)
-    if method_norm == "ma":
-        _input_validation(intensity=intensity, window=window if coef is None else None)
-        return smooth_signal_ma(intensity, window=window, coef=coef)
-
-    elif method_norm == "gaussian":
-        _input_validation(intensity=intensity, window=window, sd=sd)
-        return smooth_signal_gaussian(intensity, window=window, sd=sd)
-
-    elif method_norm == "savgol":
-        _input_validation(intensity=intensity, window=window)
-        return smooth_signal_savgol(
-            intensity, window=window, polyorder=polyorder, deriv=deriv, delta=delta
-        )
-
-    elif method_norm == "savgol_numba":
-        # _input_validation(intensity=intensity, window=window)
-        # Note: savgol_numba supports 2D batch inputs (n_spectra, n_points); the 1D-only input validation cannot be used here.
-        return smooth_signal_savgol_numba(
-            intensity,
-            window=window,
-            polyorder=polyorder,
-            deriv=deriv,
-            delta=delta,
-            lengths=lengths,
-            numba_max_threads=numba_max_threads,
-        )
-
-    elif method_norm == "ma_numba":
-        return smooth_signal_ma_numba(intensity,window=window,lengths=lengths,numba_max_threads=numba_max_threads)
-
-    elif method_norm == "gaussian_numba":
-        # Supports 2D batch inputs
-        return smooth_signal_gaussian_numba(intensity,window=window,sd=sd,lengths=lengths,numba_max_threads=numba_max_threads)
-
-    elif method_norm == "wavelet":
-        _input_validation(intensity=intensity)
-        return smooth_signal_wavelet(intensity, wavelet=wavelet, threshold_mode=threshold_mode)
-
-    elif method_norm == "gaussian_ns":
-        _input_validation(intensity=intensity, index=index, k=window, p=p, sd=sd)
-        return smooth_ns_signal_gaussian(intensity, index=index, k=window, p=p, sd=sd)  # type: ignore
-
-    elif method_norm == "bi_ns":
-        _input_validation(intensity=intensity, index=index, k=window, p=p)
-        return smooth_ns_signal_bi(intensity, index=index, k=window, p=p, sd_dist=sd, sd_intensity=sd_intensity)  # type: ignore
-
-    elif method_norm == "gaussian_ns_numba":
-        _input_validation(intensity=intensity, index=index, k=window, p=p, sd=sd)
-        return smooth_ns_signal_gaussian_numba(intensity, index=index, k=window, p=p, sd=sd, numba_max_threads=numba_max_threads)  # type: ignore
-
-    else:
-        _input_validation(intensity=intensity, index=index, k=window, p=p)
-        return smooth_ns_signal_bi_numba(intensity, index=index, k=window, p=p, sd_dist=sd, sd_intensity=sd_intensity, numba_max_threads=numba_max_threads)  # type: ignore
+    return _dispatch_with_supported_kwargs(
+        target_func,
+        intensity=input_signal,
+        flat=input_signal,
+        index=index,
+        window=window,
+        sd=sd,
+        sd_intensity=sd_intensity,
+        p=p,
+        coef=coef,
+        polyorder=polyorder,
+        deriv=deriv,
+        delta=delta,
+        wavelet=wavelet,
+        threshold_mode=threshold_mode,
+        lengths=lengths,
+    )
