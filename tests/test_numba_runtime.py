@@ -1,5 +1,6 @@
 import pytest
 from numba import get_num_threads, set_num_threads
+from massflow.preprocess.numba import numba_runtime
 
 from massflow.preprocess.numba.numba_runtime import (
     apply_numba_runtime,
@@ -83,3 +84,17 @@ def test_detect_performance_core_workers_returns_positive_int() -> None:
     count = detect_performance_core_workers()
     assert isinstance(count, int)
     assert count >= 1
+
+
+def test_detect_performance_core_workers_windows_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(numba_runtime.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(numba_runtime, "_detect_windows_intel_performance_workers", lambda: 6)
+
+    assert detect_performance_core_workers() == 6
+
+
+def test_detect_performance_core_workers_fallback_minimum_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(numba_runtime.platform, "system", lambda: "Unknown")
+    monkeypatch.setattr(numba_runtime, "get_logical_cpu_count", lambda: 1)
+
+    assert detect_performance_core_workers() == 2

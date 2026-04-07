@@ -71,6 +71,54 @@ def _detect_linux_intel_performance_workers() -> Optional[int]:
     return perf_workers if perf_workers > 0 else None
 
 
+def _run_windows_shell_text(script: str) -> Optional[str]:
+    commands = (
+        [
+            "powershell",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ],
+        ["pwsh", "-NoProfile", "-NonInteractive", "-Command", script],
+    )
+
+    for cmd in commands:
+        try:
+            output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            continue
+
+        text = output.strip()
+        if text:
+            return text
+
+    return None
+
+
+def _detect_windows_intel_performance_workers() -> Optional[int]:
+    proc_id = os.environ.get("PROCESSOR_IDENTIFIER", "")
+    if "intel" not in proc_id.lower():
+        manufacturer = _run_windows_shell_text(
+            "(Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | "
+            "Select-Object -First 1 -ExpandProperty Manufacturer)"
+        )
+        if manufacturer is None or "intel" not in manufacturer.lower():
+            return None
+
+    detected = _run_windows_shell_text(
+        "$sum = (Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | "
+        "Measure-Object -Property NumberOfPerformanceCores -Sum).Sum; "
+        "if ($null -ne $sum -and [int]$sum -gt 0) { [int]$sum }"
+    )
+    if detected is None:
+        return None
+
+    return _to_positive_int(detected)
+
+
 def detect_performance_core_workers() -> int:
     """Detect preferred worker count from performance-core topology when available."""
     sys_name = platform.system()
@@ -80,8 +128,10 @@ def detect_performance_core_workers() -> int:
         detected = _detect_apple_performance_workers()
     elif sys_name == "Linux":
         detected = _detect_linux_intel_performance_workers()
+    elif sys_name == "Windows":
+        detected = _detect_windows_intel_performance_workers()
 
-    return detected if detected is not None else get_logical_cpu_count() // 2
+    return detected if detected is not None else max(2, get_logical_cpu_count() // 2)
 
 
 # Thread control part
