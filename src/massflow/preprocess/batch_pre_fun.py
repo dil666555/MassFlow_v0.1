@@ -155,7 +155,7 @@ class BatchPreprocess:
         Parameters:
         - batch_spectra: Sequence of Spectrum objects to be normalized.
         - scale_method: 'none' or 'unit' min-max scaling.
-        - method: One of {'tic', 'rms', 'median'} or Numba variants {'tic_numba', 'rms_numba', 'median_numba'}.
+        - method: One of {'tic', 'rms', 'median'}.
         - scale: Cardinal-like amplitude scaling factor applied after normalization.
 
         Returns:
@@ -164,11 +164,24 @@ class BatchPreprocess:
         if not batch_spectra:
             return []
 
+        method_norm = (method or "tic").strip().lower()
+        supported_methods = {"tic", "rms", "median"}
+        if method_norm not in supported_methods:
+            logger.error(
+                "normalization_batch only supports tic/rms/median. "
+                "Use FlatPreprocess.normalization_flat for *_numba methods. got=%s",
+                method,
+            )
+            raise ValueError(
+                "normalization_batch only supports: tic, rms, median. "
+                "Use FlatPreprocess.normalization_flat for *_numba methods."
+            )
+
         normalized_spectra: list[SpectrumImzML] = []
         for spectrum in batch_spectra:
             normalized_spectrum = SpectrumPreprocess.normalization_spectrum(
                 data=spectrum,
-                method=method,
+                method=method_norm,
                 scale=scale,
                 scale_method=scale_method,
             )
