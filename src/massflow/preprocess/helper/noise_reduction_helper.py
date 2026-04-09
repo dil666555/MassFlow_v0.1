@@ -3,7 +3,6 @@ Author: MassFlow Development Team Bionet/NeoNexus lyk
 License: See LICENSE file in project root
 """
 
-from inspect import signature
 from typing import Any, Callable, Optional
 import numpy as np
 import pywt
@@ -13,6 +12,7 @@ from scipy import stats
 from scipy import signal as scipy_signal, linalg
 from massflow.preprocess.numba.noise_reduction_numba import ns_signal_pre
 from massflow.tools.logger import get_logger
+from massflow.tools.funs import _dispatch_with_supported_kwargs
 from massflow.module import Spectrum
 from massflow.preprocess.numba.noise_reduction_numba import (
     smooth_signal_savgol_numba,
@@ -530,11 +530,7 @@ def smoother(
         ValueError: If `method` is unsupported or parameter combinations are invalid.
         TypeError: If input intensity is invalid or `coef` is not 1D.
     """
-    def _dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> np.ndarray:
-        supported = signature(func).parameters
-        filtered_kwargs = {name: value for name, value in kwargs.items() if name in supported}
-        result = func(**filtered_kwargs)
-        return np.asarray(result)
+
 
     # Normalize method and validate supported set
     method_norm = (method or "ma").strip().lower()

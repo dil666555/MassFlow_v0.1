@@ -2,6 +2,7 @@ from typing import Optional
 import numpy as np
 
 from massflow.preprocess.helper.noise_reduction_helper import smoother
+from massflow.preprocess.helper.normalizer_helper import normalizer
 from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.preprocess")
@@ -38,6 +39,7 @@ class FlatPreprocess:
         if method_norm not in supported_methods:
             raise ValueError("noise_reduction_flat only supports: savgol_numba, gaussian_numba, ma_numba")
 
+
         return smoother(
             intensity=intensity,
             method=method_norm,
@@ -51,5 +53,35 @@ class FlatPreprocess:
             delta=delta,
             wavelet=wavelet,
             threshold_mode=threshold_mode,
+            lengths=lengths,
+        )
+
+    @staticmethod
+    def normalization_flat(
+        intensity: np.ndarray,
+        method: str = "tic_numba",
+        scale: float = 1.0,
+        scale_method: str = "none",
+        lengths: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Perform flat-mode normalization and return processed flat intensity.
+
+        Supported methods are limited to:
+        - ``tic_numba``
+        - ``rms_numba``
+        - ``median_numba``
+
+        """
+
+        method_norm = (method or "").strip().lower()
+        supported_methods = {"tic_numba", "rms_numba", "median_numba"}
+        if method_norm not in supported_methods:
+            raise ValueError("normalization_flat only supports: tic_numba, rms_numba, median_numba")
+
+        return normalizer(
+            intensity=intensity,
+            method=method_norm,
+            scale=scale,
+            scale_method=scale_method,
             lengths=lengths,
         )

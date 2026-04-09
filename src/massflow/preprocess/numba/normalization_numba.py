@@ -1,6 +1,7 @@
 from typing import Optional
 import numpy as np
 from numba import jit, prange
+from massflow.tools.funs import prepare_flat_inputs, lengths_to_offsets
 
 # -----------------------------------------------------------------------------
 # Core Calculation Kernels (Helpers)
@@ -65,7 +66,7 @@ def _apply_unit_scaling_inplace(arr: np.ndarray):
 
 
 @jit(nopython=True, cache=True)
-def _process_row(
+def _normalize_core(
     in_arr: np.ndarray,
     out_arr: np.ndarray,
     method_enum: int,
@@ -76,13 +77,13 @@ def _process_row(
     Process a single row (view) and write to output view.
     """
     # 1. Calculate Base Factor
-    base = 0.0
+    base = np.float64(0.0)
     if method_enum == 0:  # TIC
-        base = _get_tic(in_arr)
+        base = np.float64(_get_tic(in_arr))
     elif method_enum == 1:  # RMS
-        base = _get_rms(in_arr)
+        base = np.float64(_get_rms(in_arr))
     elif method_enum == 2:  # MEDIAN
-        base = _get_median(in_arr)
+        base = np.float64(_get_median(in_arr))
 
     # Safety Check
     if base <= 0.0 or np.isnan(base):
@@ -90,11 +91,11 @@ def _process_row(
         return
 
     # 2. Apply Normalization
-    factor = scale_factor / base
+    factor = np.float64(scale_factor) / base
     n = in_arr.shape[0]
 
     for i in range(n):
-        out_arr[i] = in_arr[i] * factor
+        out_arr[i] = np.float64(in_arr[i]) * factor
 
     # 3. Apply Unit Scaling if requested
     if do_unit_scale:
@@ -102,36 +103,28 @@ def _process_row(
 
 
 @jit(nopython=True, parallel=True, cache=True)
-def _normalize_batch_jit(
-    intensity: np.ndarray,
+def _normalize_flat_jit(
+    flat: np.ndarray,
     method_enum: int,
     scale_factor: float,
     do_unit_scale: bool,
-    lengths: Optional[np.ndarray] = None,
+    lengths: np.ndarray,
 ) -> np.ndarray:
+    res = np.zeros(flat.size, dtype=flat.dtype)
+    offsets = lengths_to_offsets(lengths)
 
-    n_pixels = intensity.shape[0]
-    n_mz = intensity.shape[1]
+    for p in prange(lengths.size):
+        start = offsets[p]
+        end = offsets[p + 1]
+        if end > start:
+            _normalize_core(
+                flat[start:end],
+                res[start:end],
+                method_enum,
+                scale_factor,
+                do_unit_scale,
+            )
 
-    # Initialize output (zeros handles padding implicitly)
-    res = np.zeros((n_pixels, n_mz), dtype=intensity.dtype)
-
-    # Parallel Loop
-    if lengths is None:
-        for i in prange(n_pixels):
-            _process_row(intensity[i], res[i], method_enum, scale_factor, do_unit_scale)
-    else:
-        for i in prange(n_pixels):
-            valid_len = lengths[i]
-            if valid_len > 0:
-                # Use slicing (views) for efficiency
-                _process_row(
-                    intensity[i, :valid_len],
-                    res[i, :valid_len],
-                    method_enum,
-                    scale_factor,
-                    do_unit_scale,
-                )
     return res
 
 
@@ -148,26 +141,18 @@ def normalizer_numba(
     lengths: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """
-    Numba backend for normalization with 2D batch support.
+    Numba backend for flat-mode normalization.
 
     Parameters:
-        intensity: 2D array (n_pixels, n_mz) or 1D array.
+        intensity: 1D flat array.
         method: 'tic', 'rms', 'median'.
         scale: Amplitude scaling factor.
         scale_method: 'none' or 'unit'.
-        lengths: (Optional) 1D int array of valid lengths per spectrum.
+        lengths: (Optional) 1D int array of valid lengths per spectrum. If omitted,
+            the full input is treated as one spectrum.
     """
 
-    # Ensure float, but prefer float32 for speed if input is already float32
-    if intensity.dtype not in [np.float32, np.float64]:
-        intensity = intensity.astype(np.float64)
-
-    # Handle 1D input by treating as batch of 1
-    is_1d = intensity.ndim == 1
-    if is_1d:
-        intensity = intensity[np.newaxis, :]
-        if lengths is not None and np.isscalar(lengths):
-            lengths = np.array([lengths], dtype=np.int64)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
     # Map Method
     method_clean = method.strip().lower()
@@ -184,9 +169,4 @@ def normalizer_numba(
     scale_clean = (scale_method or "none").strip().lower()
     do_unit = scale_clean == "unit"
 
-    # Execute Parallel Batch
-    result = _normalize_batch_jit(intensity, m_enum, float(scale), do_unit, lengths)
-
-    if is_1d:
-        return result[0]
-    return result
+    return _normalize_flat_jit(intensity_arr, m_enum, float(scale), do_unit, lengths_arr)

@@ -4,6 +4,7 @@ from numba import njit, prange
 from scipy.signal import savgol_coeffs
 from scipy.spatial import cKDTree  # type: ignore
 from scipy import stats
+from massflow.tools.funs import prepare_flat_inputs, lengths_to_offsets
 from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.preprocess.noise_reduction_numba")
@@ -47,21 +48,11 @@ def _ma_core(
         out[i] = current_sum * inv_window
 
 
-@njit(cache=True)
-def _lengths_to_offsets(lengths: np.ndarray) -> np.ndarray:
-    n = lengths.size
-    offsets = np.empty(n + 1, dtype=np.int64)
-    offsets[0] = 0
-    for i in range(n):
-        offsets[i + 1] = offsets[i] + lengths[i]
-    return offsets
-
-
 @njit(parallel=True, cache=True, fastmath=True)
 def _ma_flat_jit(flat: np.ndarray, window: int, lengths: np.ndarray) -> np.ndarray:
     """Flat batch entry point for ma_numba."""
-    res = np.empty(flat.size, dtype=np.float32)
-    offsets = _lengths_to_offsets(lengths)
+    res = np.empty(flat.size, dtype=flat.dtype)
+    offsets = lengths_to_offsets(lengths)
 
     for p in prange(lengths.size):  # pylint: disable=not-an-iterable
         start = offsets[p]
@@ -82,7 +73,7 @@ def _savgol_1d_core(signal: np.ndarray,
     n = signal.size
     window = kernels.shape[0]
     half = window // 2
-    res = np.empty(n, dtype=np.float32)
+    res = np.empty(n, dtype=signal.dtype)
     for i in range(n):
         if i < half:
             pos = i
@@ -93,7 +84,7 @@ def _savgol_1d_core(signal: np.ndarray,
 
         k_weights = kernels[pos]
         start = i - pos
-        val = 0.0
+        val = np.float64(0.0)
         for j in range(window):
             val += signal[start + j] * k_weights[j]
         res[i] = val
@@ -103,8 +94,8 @@ def _savgol_1d_core(signal: np.ndarray,
 @njit(fastmath=True, cache=True, parallel=True)
 def savgol_flat_jit(flat: np.ndarray, kernels: np.ndarray, lengths: np.ndarray) -> np.ndarray:
     """Flat Savitzky-Golay entry point. Parallel over spectra segments."""
-    res = np.empty(flat.size, dtype=np.float32)
-    offsets = _lengths_to_offsets(lengths)
+    res = np.empty(flat.size, dtype=flat.dtype)
+    offsets = lengths_to_offsets(lengths)
     for p in prange(lengths.size):  # pylint: disable=not-an-iterable
         start = offsets[p]
         end = offsets[p + 1]
@@ -119,10 +110,10 @@ def _convolve1d_core_edge(signal: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     n = signal.size
     k_len = kernel.size
     half = k_len // 2
-    res = np.empty(n, dtype=np.float32)
+    res = np.empty(n, dtype=signal.dtype)
 
     for i in range(n):
-        val = 0.0
+        val = np.float64(0.0)
         for j in range(k_len):
             idx = i - half + j
             if idx < 0:
@@ -137,8 +128,8 @@ def _convolve1d_core_edge(signal: np.ndarray, kernel: np.ndarray) -> np.ndarray:
 @njit(fastmath=True, cache=True, parallel=True)
 def convolve1d_flat_jit(flat: np.ndarray, kernel: np.ndarray, lengths: np.ndarray) -> np.ndarray:
     """Flat convolution entry point. Parallel over spectra segments."""
-    res = np.empty(flat.size, dtype=np.float32)
-    offsets = _lengths_to_offsets(lengths)
+    res = np.empty(flat.size, dtype=flat.dtype)
+    offsets = lengths_to_offsets(lengths)
     for p in prange(lengths.size):  # pylint: disable=not-an-iterable
         start = offsets[p]
         end = offsets[p + 1]
@@ -210,28 +201,6 @@ def _ns_bilateral_kernel(
 # ==================== Non-JIT wrappers and preprocessing ====================
 
 
-def _prepare_intensity_inputs(
-    intensity: np.ndarray,
-    lengths: Optional[np.ndarray],
-) -> tuple[np.ndarray, np.ndarray]:
-    """Normalize flat input and lengths for flat-mode kernels."""
-    if intensity is None or not isinstance(intensity, np.ndarray) or intensity.ndim != 1:
-        raise ValueError("intensity must be a 1D numpy array")
-
-    intensity_arr = intensity.astype(np.float32, copy=False)
-
-    if lengths is None:
-        lengths_arr = np.array([intensity_arr.size], dtype=np.int64)
-    else:
-        lengths_arr = np.asarray(lengths, dtype=np.int64)
-        if lengths_arr.ndim != 1:
-            raise ValueError("lengths must be a 1D array")
-        if int(np.sum(lengths_arr)) != intensity_arr.size:
-            raise ValueError("sum(lengths) must equal intensity.size")
-
-    return intensity_arr, lengths_arr
-
-
 def smooth_signal_ma_numba(
     intensity: np.ndarray,
     window: int = 5,
@@ -242,7 +211,7 @@ def smooth_signal_ma_numba(
         raise ValueError("window must be >= 1")
 
     window = window + 1 if window % 2 == 0 else window
-    intensity_arr, lengths_arr = _prepare_intensity_inputs(intensity, lengths)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
     return _ma_flat_jit(intensity_arr, window, lengths_arr)
 
@@ -261,13 +230,13 @@ def smooth_signal_savgol_numba(
     if polyorder >= actual_window:
         raise ValueError("polyorder must be < window")
 
-    intensity_arr, lengths_arr = _prepare_intensity_inputs(intensity, lengths)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
-    kernels = np.zeros((actual_window, actual_window), dtype=np.float32)
+    kernels = np.zeros((actual_window, actual_window), dtype=np.float64)
     for pos in range(actual_window):
         kernels[pos] = savgol_coeffs(
             actual_window, polyorder, deriv=deriv, delta=delta, pos=pos, use="dot"
-        ).astype(np.float32)
+        ).astype(np.float64)
 
     return savgol_flat_jit(intensity_arr, kernels, lengths_arr)
 
@@ -291,11 +260,11 @@ def smooth_signal_gaussian_numba(
     if sd <= 0:
         raise ValueError("sd must be positive")
 
-    intensity_arr, lengths_arr = _prepare_intensity_inputs(intensity, lengths)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
     # Generate Gaussian kernel
-    x = np.arange(-(window // 2), window // 2 + 1, dtype=np.float32)
-    kernel = np.exp(-0.5 * (x / sd) ** 2).astype(np.float32)
+    x = np.arange(-(window // 2), window // 2 + 1, dtype=np.float64)
+    kernel = np.exp(-0.5 * (x / sd) ** 2).astype(np.float64)
     kernel /= kernel.sum()
 
     return convolve1d_flat_jit(intensity_arr, kernel, lengths_arr)
@@ -313,13 +282,14 @@ def smooth_ns_signal_gaussian_numba(
     Estimates a default spatial scale from neighbour distances when sd is
     None, then applies the parallel Gaussian kernel.
     """
+    input_dtype = np.asarray(intensity).dtype
     neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=window, p=p)
     dists_max = np.max(dists, axis=1)
     sd_val = np.median(dists_max) / 2.0 if sd is None else sd
     if sd_val <= 0:
         raise ValueError("sd must be positive")
     result64 = _ns_gaussian_kernel(neigh_intensity, dists, float(sd_val))
-    return result64.astype(np.float32)
+    return result64.astype(input_dtype)
 
 
 def smooth_ns_signal_bi_numba(
@@ -336,6 +306,7 @@ def smooth_ns_signal_bi_numba(
     MAD-based estimate for sd_intensity, then applies the parallel bilateral
     kernel.
     """
+    input_dtype = np.asarray(intensity).dtype
     neigh_intensity, dists, _ = ns_signal_pre(intensity, index, k=window, p=p)
     dists_max = np.max(dists, axis=1)
     sd_dist_val = np.median(dists_max) / 2.0 if sd is None else sd
@@ -348,7 +319,7 @@ def smooth_ns_signal_bi_numba(
     result64 = _ns_bilateral_kernel(
         neigh_intensity, dists, center, float(sd_dist_val), float(sd_int_val)
     )
-    return result64.astype(np.float32)
+    return result64.astype(input_dtype)
 
 
 def ns_signal_pre(
