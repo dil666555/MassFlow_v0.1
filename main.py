@@ -8,30 +8,28 @@ logger = get_logger("massflow")
 
 
 def main():
-    file_path = "data/baseline_test.imzML"
+    file_path = "data/example.imzML"
 
     with MSDataManagerImzML(filepath=file_path) as data_manager:
         data_manager.load_head_data()
 
-        spectrum = data_manager.ms[0]
-
-        # Use flat_generator + flat numba baseline reduction for faster compute path.
+        # Use flat_generator + flat numba normalization for faster compute path.
         processed_data_manager = MSDataManagerImzML(MassSpectrumSet(), temp_dir="temp")
         processed_data_manager.copy_meta(data_manager)
 
         for mz_flat, intensity_flat, lengths, coordinates in data_manager.flat_generator(
-            batch_size=4096,
+            batch_size=512,
             include_mz=True,
             max_threads=16,
         ):
-            corrected_flat = FlatPreprocess.baseline_reduction_flat(
+            normalized_flat = FlatPreprocess.normalization_flat(
                 intensity=intensity_flat,
-                method="snip_numba",
+                method="tic_numba",
                 lengths=lengths,
             )
             processed_data_manager.swap_flat_data_out2disk(
                 mz_flat=mz_flat,
-                intensity_flat=corrected_flat,
+                intensity_flat=normalized_flat,
                 lengths=lengths,
                 coordinates=coordinates,
             )
@@ -40,7 +38,7 @@ def main():
         processed_data_manager.load_head_data()
 
         logger.info(
-            "Baseline correction finished with flat_generator (method=snip_numba). "
+            "Normalization finished with flat_generator (method=tic_numba). "
             f"Processed spectra: {len(processed_data_manager.ms)}"
         )
 
@@ -51,10 +49,8 @@ def main():
 
         processed_spectrum = processed_data_manager.ms[0]
         plot_spectrum(
-            base=spectrum,
-            target=processed_spectrum,
-            overlay=True,
-            mz_range=(500, 2000),
+            base=processed_spectrum,
+            mz_range=(200, 400),
             metrics_box=False,
         )
 

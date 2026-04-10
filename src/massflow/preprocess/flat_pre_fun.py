@@ -1,6 +1,5 @@
 from typing import Optional
 import numpy as np
-
 from massflow.preprocess.helper.baseline_correction_helper import baseline_corrector
 from massflow.preprocess.helper.noise_reduction_helper import smoother
 from massflow.preprocess.helper.normalizer_helper import normalizer
@@ -61,8 +60,10 @@ class FlatPreprocess:
     def normalization_flat(
         intensity: np.ndarray,
         method: str = "tic_numba",
-        scale: float = 1.0,
-        scale_method: str = "none",
+        scale: float | None = None,
+        mz_flat: np.ndarray | None = None,
+        ref: float | None = None,
+        ref_tolerance: float = 0.1,
         lengths: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """Perform flat-mode normalization and return processed flat intensity.
@@ -70,20 +71,22 @@ class FlatPreprocess:
         Supported methods are limited to:
         - ``tic_numba``
         - ``rms_numba``
-        - ``median_numba``
+        - ``ref_numba``
 
         """
 
         method_norm = (method or "").strip().lower()
-        supported_methods = {"tic_numba", "rms_numba", "median_numba"}
+        supported_methods = {"tic_numba", "rms_numba", "ref_numba"}
         if method_norm not in supported_methods:
-            raise ValueError("normalization_flat only supports: tic_numba, rms_numba, median_numba")
+            raise ValueError("normalization_flat only supports: tic_numba, rms_numba, ref_numba")
 
         return normalizer(
             intensity=intensity,
             method=method_norm,
             scale=scale,
-            scale_method=scale_method,
+            mz_flat=mz_flat,
+            ref=ref,
+            ref_tolerance=ref_tolerance,
             lengths=lengths,
         )
 

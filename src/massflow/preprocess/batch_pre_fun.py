@@ -144,7 +144,6 @@ class BatchPreprocess:
     @staticmethod
     def normalization_batch(
         batch_spectra: Sequence[Spectrum],
-        scale_method: str = "none",
         method: str = "tic",
         scale: float = 1.0,
     ) -> Sequence[SpectrumImzML]:
@@ -152,7 +151,6 @@ class BatchPreprocess:
 
         Parameters:
         - batch_spectra: Sequence of Spectrum objects to be normalized.
-        - scale_method: 'none' or 'unit' min-max scaling.
         - method: One of {'tic', 'rms', 'median'}.
         - scale: Cardinal-like amplitude scaling factor applied after normalization.
 
@@ -174,7 +172,6 @@ class BatchPreprocess:
                 data=spectrum,
                 method=method_norm,
                 scale=scale,
-                scale_method=scale_method,
             )
             normalized_spectra.append(normalized_spectrum)
 

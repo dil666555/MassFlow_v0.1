@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Literal, Optional, Protocol, Self, Sequence
-
+from typing import Any, Callable, Literal, Protocol, Self, Sequence
 import numpy as np
 from massflow.preprocess.batch_pre_fun import BatchPreprocess
 from massflow.r_preprocess.adapter import CardinalAdapter
@@ -95,7 +94,6 @@ class PreprocessorAPI(_TaskRegistrar):
     def normalization(
         self,
         *,
-        scale_method: str = "none",
         method: str = "tic",
         scale: float = 1.0,
     ) -> Self:
@@ -104,7 +102,6 @@ class PreprocessorAPI(_TaskRegistrar):
             "normalization",
             scope="batch",
             apply_fn=BatchPreprocess.normalization_batch,
-            scale_method=scale_method,
             method=method,
             scale=scale,
         )

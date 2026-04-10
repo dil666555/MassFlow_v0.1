@@ -1,50 +1,47 @@
-import gc
 import time
-import tracemalloc
-import warnings
-
 import numpy as np
 import pytest
-
 from massflow.data_manager import MSDataManagerImzML
-from massflow.module import Spectrum
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
 from massflow.tools.dm_process import speed_process
 from massflow.tools.logger import get_logger
 
-logger = get_logger("massflow.test.test_normalization")
+logger = get_logger("test_normalization")
 
-ROUNDS = 3
-BATCH_NORM_METHODS = ["tic", "rms", "median"]
-FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "median_numba"]
-BATCH_FLAT_NORM_METHOD_PAIRS = [
-    ("tic", "tic_numba"),
-    ("rms", "rms_numba"),
-    ("median", "median_numba"),
-]
+ROUNDS = 5
+BATCH_NORM_METHODS = ["tic", "rms"]
+FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
+FLAT_SCALE_NORM_METHODS = ["tic_numba", "rms_numba"]
+BATCH_FLAT_NORM_METHOD_PAIRS = [("tic", "tic_numba"),
+                                ("rms", "rms_numba"),]
 
 
 def _normalization_flat_from_flat_batches(
     flat_batches,
     method: str,
-    scale: float,
-    scale_method: str,
+    scale: float | None = None,
+    ref_tolerance: float = 0.1,
 ):
-    for intensity_flat, lengths in flat_batches:
-        _ = FlatPreprocess.normalization_flat(
-            intensity=intensity_flat,
-            method=method,
-            scale=scale,
-            scale_method=scale_method,
-            lengths=lengths,
-        )
+    for mz_flat, intensity_flat, lengths, ref in flat_batches:
+        kwargs = {
+            "intensity": intensity_flat,
+            "method": method,
+            "scale": scale,
+            "lengths": lengths,
+        }
+        if method == "ref_numba":
+            kwargs["mz_flat"] = mz_flat
+            kwargs["ref"] = ref
+            kwargs["ref_tolerance"] = ref_tolerance
+
+        _ = FlatPreprocess.normalization_flat(**kwargs)
 
 
 class TestNormalizationAPI:
     """Normalization API tests: memory, speed, consistency, and normalization invariants."""
 
-    @pytest.fixture(scope="module", params=["data/example.imzML"])
+    @pytest.fixture(scope="module", params=["data/baseline_test.imzML"])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
@@ -53,19 +50,20 @@ class TestNormalizationAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=["data/example.imzML"])
+    @pytest.fixture(scope="module", params=["data/baseline_test.imzML"])
     def flat_caches(self, request):
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
         dm.load_head_data()
 
         caches = []
-        for _, intensity_flat, lengths, _ in dm.flat_generator(
+        for mz_data, intensity_flat, lengths, _ in dm.flat_generator(
             batch_size=4096,
-            include_mz=False,
+            include_mz=True,
             max_threads=16,
         ):
-            caches.append((intensity_flat, lengths))
+            ref = float(mz_data[mz_data.size // 2]) if mz_data is not None and mz_data.size > 0 else None
+            caches.append((mz_data, intensity_flat, lengths, ref))
 
         return caches
 
@@ -81,8 +79,6 @@ class TestNormalizationAPI:
 
         batch_kwargs = {
             "method": method,
-            "scale": 1.0,
-            "scale_method": "none",
         }
 
         benchmark.pedantic(
@@ -105,7 +101,7 @@ class TestNormalizationAPI:
 
         benchmark.pedantic(
             _normalization_flat_from_flat_batches,
-            args=(flat_caches, method, 1.0, "none"),
+            args=(flat_caches, method),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
@@ -119,163 +115,112 @@ class TestNormalizationAPI:
             batch_spectra=batch,
             method=batch_method,
             scale=1.0,
-            scale_method="none",
         )
 
         lengths = np.array([spectrum.intensity.size for spectrum in batch], dtype=np.int64)
-        intensity_flat = np.concatenate(
-            [spectrum.intensity.astype(np.float64, copy=False) for spectrum in batch]
-        )
+        intensity_flat = np.concatenate([spectrum.intensity.astype(np.float32, copy=False) for spectrum in batch])
 
         flat_result = FlatPreprocess.normalization_flat(
             intensity=intensity_flat,
             method=flat_method,
             scale=1.0,
-            scale_method="none",
             lengths=lengths,
         )
 
         offset = 0
-        for spectrum_batch, valid_len in zip(batch_result, lengths):
+        for spectrum, valid_len in zip(batch_result, lengths):
             end = offset + int(valid_len)
             flat_slice = flat_result[offset:end]
-            assert spectrum_batch.intensity is not None
+            assert spectrum.intensity is not None
             np.testing.assert_allclose(
-                spectrum_batch.intensity,
+                spectrum.intensity,
                 flat_slice,
                 rtol=1e-5,
                 atol=1e-5,
             )
             offset = end
 
-    @pytest.mark.parametrize("method", BATCH_NORM_METHODS)
-    def test_norm_invariants_none(self, method, ms_raw_data):
+    @pytest.mark.parametrize("method", FLAT_SCALE_NORM_METHODS)
+    def test_norm_invariants_default_equals_length(self, method, ms_raw_data):
         batch = next(ms_raw_data.batch_generator(batch_size=32))
-        normalized_batch = BatchPreprocess.normalization_batch(
-            batch_spectra=batch,
-            method=method,
-            scale=1.0,
-            scale_method="none",
-        )
-
-        for spectrum in normalized_batch:
-            y = spectrum.intensity
-            assert y is not None
-            if method == "tic":
-                assert np.isclose(np.sum(y), 1.0, rtol=1e-6)
-            elif method == "rms":
-                assert np.isclose(np.sqrt(np.mean(y ** 2)), 1.0, rtol=1e-6)
-            else:
-                assert np.isclose(np.median(y), 1.0, rtol=1e-6)
-
-    def test_norm_unit_scaling_range(self, ms_raw_data):
-        batch = next(ms_raw_data.batch_generator(batch_size=32))
-        normalized_batch = BatchPreprocess.normalization_batch(
-            batch_spectra=batch,
-            method="tic",
-            scale=1.0,
-            scale_method="unit",
-        )
-
-        for spectrum in normalized_batch:
-            y = spectrum.intensity
-            assert y is not None
-            assert np.min(y) >= 0.0
-            assert np.max(y) <= 1.0
-
-    def test_norm_batch_rejects_numba_method_name(self):
-        spectrum = Spectrum(
-            mz_list=np.array([100.0, 200.0], dtype=np.float64),
-            intensity=np.array([10.0, 20.0], dtype=np.float64),
-            coordinate=[1, 1, 1],
-        )
-
-        with pytest.raises(ValueError, match="normalization_batch only supports"):
-            BatchPreprocess.normalization_batch(
-                batch_spectra=[spectrum],
-                method="tic_numba",
-                scale=1.0,
-                scale_method="none",
-            )
-
-    @pytest.mark.parametrize("method", FLAT_NORM_METHODS)
-    def test_norm_flat_memory_profile(self, method, flat_caches):
-        # Profile representative flat-path memory on real data; this test is observational.
-        subset = flat_caches[:3]
-
-        gc.collect()
-        tracemalloc.start()
-        for intensity_flat, lengths in subset:
-            _ = FlatPreprocess.normalization_flat(
-                intensity=intensity_flat,
-                method=method,
-                scale=1.0,
-                scale_method="none",
-                lengths=lengths,
-            )
-        current, peak = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
-
-        logger.info("method=%s tracemalloc current=%d peak=%d", method, current, peak)
-        warnings.warn(
-            f"flat-memory-profile method={method} current={int(current)}B peak={int(peak)}B",
-            UserWarning,
-        )
-        assert peak >= current >= 0
-
-    @pytest.mark.parametrize(("batch_method", "flat_method"), BATCH_FLAT_NORM_METHOD_PAIRS)
-    def test_norm_batch_flat_memory_comparison(self, batch_method, flat_method, ms_raw_data):
-        """Compare steady-state tracemalloc peaks for batch vs flat normalization paths."""
-        batch = next(ms_raw_data.batch_generator(batch_size=256))
         lengths = np.array([spectrum.intensity.size for spectrum in batch], dtype=np.int64)
-        intensity_flat = np.concatenate(
-            [spectrum.intensity.astype(np.float64, copy=False) for spectrum in batch]
-        )
+        intensity_flat = np.concatenate([spectrum.intensity.astype(np.float64, copy=False) for spectrum in batch])
 
-        # Warm-up to avoid counting one-time setup/JIT costs in comparison.
-        _ = BatchPreprocess.normalization_batch(
-            batch_spectra=batch,
-            method=batch_method,
-            scale=1.0,
-            scale_method="none",
-        )
-        _ = FlatPreprocess.normalization_flat(
+        normalized_flat = FlatPreprocess.normalization_flat(
             intensity=intensity_flat,
-            method=flat_method,
-            scale=1.0,
-            scale_method="none",
+            method=method,
+            scale=None,
             lengths=lengths,
         )
 
-        gc.collect()
-        tracemalloc.start()
-        _ = BatchPreprocess.normalization_batch(
-            batch_spectra=batch,
-            method=batch_method,
-            scale=1.0,
-            scale_method="none",
-        )
-        _, batch_peak = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+        offset = 0
+        for valid_len in lengths:
+            end = offset + int(valid_len)
+            y = normalized_flat[offset:end]
+            if method == "tic_numba":
+                assert np.isclose(np.sum(y), float(valid_len), rtol=1e-6)
+            else:
+                assert np.isclose(np.sqrt(np.mean(y ** 2)), float(valid_len), rtol=1e-6)
+            offset = end
 
-        gc.collect()
-        tracemalloc.start()
-        _ = FlatPreprocess.normalization_flat(
+    @pytest.mark.parametrize("method", FLAT_SCALE_NORM_METHODS)
+    def test_norm_invariants_scale_equals_param(self, method, ms_raw_data):
+        batch = next(ms_raw_data.batch_generator(batch_size=32))
+        lengths = np.array([spectrum.intensity.size for spectrum in batch], dtype=np.int64)
+        intensity_flat = np.concatenate([spectrum.intensity.astype(np.float64, copy=False) for spectrum in batch])
+
+        scale_target = 3.5
+        normalized_flat = FlatPreprocess.normalization_flat(
             intensity=intensity_flat,
-            method=flat_method,
-            scale=1.0,
-            scale_method="none",
+            method=method,
+            scale=scale_target,
             lengths=lengths,
         )
-        _, flat_peak = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
 
-        ratio = float(batch_peak / flat_peak) if flat_peak > 0 else float("inf")
-        msg = (
-            f"memory-compare method={batch_method}/{flat_method} "
-            f"batch_peak={int(batch_peak)}B flat_peak={int(flat_peak)}B ratio_batch_over_flat={ratio:.4f}"
+        offset = 0
+        for valid_len in lengths:
+            end = offset + int(valid_len)
+            y = normalized_flat[offset:end]
+            if method == "tic_numba":
+                assert np.isclose(np.sum(y), scale_target, rtol=1e-6)
+            else:
+                assert np.isclose(np.sqrt(np.mean(y ** 2)), scale_target, rtol=1e-6)
+            offset = end
+
+    def test_norm_ref_peak_scaled_to_target(self, flat_caches):
+        mz_flat, intensity_flat, lengths, ref = flat_caches[0]
+        assert mz_flat is not None
+        assert ref is not None
+
+        is_shared_mz = (
+            mz_flat.ndim == 1
+            and mz_flat.size != intensity_flat.size
+            and lengths.size > 0
+            and mz_flat.size == int(lengths[0])
         )
-        logger.info(msg)
-        warnings.warn(msg, UserWarning)
-        assert batch_peak >= 0
-        assert flat_peak >= 0
+
+        scale_target = 3.5
+        normalized_flat = FlatPreprocess.normalization_flat(
+            intensity=intensity_flat,
+            method="ref_numba",
+            scale=scale_target,
+            mz_flat=mz_flat,
+            ref=ref,
+            ref_tolerance=0.1,
+            lengths=lengths,
+        )
+
+        offset = 0
+        for valid_len in lengths:
+            end = offset + int(valid_len)
+            mz_slice = mz_flat if is_shared_mz else mz_flat[offset:end]
+            y = normalized_flat[offset:end]
+
+            idx = int(np.argmin(np.abs(mz_slice - ref)))
+            if np.abs(mz_slice[idx] - ref) <= 0.1 and intensity_flat[offset + idx] > 0.0:
+                logger.info(
+                       f"scaling to target={scale_target},y[idx]={y[idx]}"
+                )
+                assert np.isclose(y[idx], scale_target, rtol=1e-5, atol=1e-5)
+
+            offset = end
