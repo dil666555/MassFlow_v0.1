@@ -1,8 +1,8 @@
-import numpy as np
 from typing import Optional
+import numpy as np
 from massflow.tools.logger import get_logger
 from massflow.preprocess.numba.normalization_numba import normalizer_numba
-from massflow.tools.funs import _dispatch_with_supported_kwargs
+from massflow.tools.funs import dispatch_with_supported_kwargs
 
 logger = get_logger("preprocesss")
 
@@ -205,7 +205,7 @@ def normalizer(
         ValueError: If `method` is not supported.
     """
 
-    
+
     # Basic validation
     if not np.isfinite(scale) or float(scale) < 0.0:
         logger.error("scale must be a finite non-negative number")
@@ -226,7 +226,7 @@ def normalizer(
 
     if is_numba:
         # Use dispatch to handle parameter filtering dynamically
-        return _dispatch_with_supported_kwargs(
+        return dispatch_with_supported_kwargs(
             normalizer_numba,
             intensity=intensity,
             method=base_method,

@@ -7,7 +7,7 @@ import numpy as np
 def is_valid_file(path):
     return os.path.exists(path) and os.path.getsize(path) > 0
 
-def _dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> np.ndarray:
+def dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> np.ndarray:
     """Dispatch to function with only supported kwargs."""
     supported = signature(func).parameters
     filtered_kwargs = {name: value for name, value in kwargs.items() if name in supported}

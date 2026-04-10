@@ -9,7 +9,7 @@ from massflow.preprocess.numba.baseline_correction_numba import (
     local_maxima_numba,
 )
 from massflow.preprocess.numba.noise_reduction_numba import smooth_lowess_numba
-from massflow.tools import _dispatch_with_supported_kwargs
+from massflow.tools import dispatch_with_supported_kwargs
 from massflow.tools.logger import get_logger
 
 logger = get_logger("preprocesss")
@@ -36,7 +36,7 @@ def _input_validation(intensity: np.ndarray, baseline_scale: float = 1.0):
         logger.error("intensity must be a non-empty 1D array")
         raise ValueError("intensity must be a non-empty 1D array")
 
-    if not np.isfinite(baseline_scale) or not (0.0 < float(baseline_scale) <= 1.0):
+    if not np.isfinite(baseline_scale) or not 0.0 < float(baseline_scale) <= 1.0:
         logger.error("baseline_scale must be a finite number in (0,1]")
         raise ValueError("baseline_scale must be a finite number in (0,1]")
 
@@ -64,7 +64,7 @@ def asls_baseline(
     if not np.isfinite(lam) or lam <= 0:
         logger.error("lam must be a positive finite number for ASLS")
         raise ValueError("lam must be a positive finite number for ASLS")
-    if not np.isfinite(p) or not (0.0 < p < 1.0):
+    if not np.isfinite(p) or not 0.0 < p < 1.0:
         logger.error("p must be in (0,1) for ASLS")
         raise ValueError("p must be in (0,1) for ASLS")
     if not isinstance(niter, (int, np.integer)) or niter < 1:
@@ -331,7 +331,7 @@ def baseline_corrector(
     }
 
     baseline_func = method_map.get(method_norm, asls_baseline)
-    baseline = _dispatch_with_supported_kwargs(
+    baseline = dispatch_with_supported_kwargs(
         baseline_func,
         intensity=xi,
         smooth=smooth,

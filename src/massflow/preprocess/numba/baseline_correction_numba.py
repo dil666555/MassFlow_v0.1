@@ -1,7 +1,7 @@
 import numpy as np
 from numba import jit, njit, prange
 from massflow.preprocess.numba.noise_reduction_numba import _lowess_core
-from massflow.tools.funs import _lengths_to_offsets, _prepare_intensity_inputs
+from massflow.tools import lengths_to_offsets, prepare_flat_inputs
 
 @njit(cache=True, fastmath=True)
 def _median_of_finite(values: np.ndarray) -> float:
@@ -125,7 +125,7 @@ def _baseline_locmin_jit(
 ) -> np.ndarray:
     """Flat batch entry. Dispatch each pixel spectrum to baseline_locmin_core in parallel."""
     out = np.empty(flat.size, dtype=np.float64)
-    offsets = _lengths_to_offsets(lengths)
+    offsets = lengths_to_offsets(lengths)
 
     for idx in prange(lengths.size):  # pylint: disable=not-an-iterable
         start = offsets[idx]
@@ -190,7 +190,7 @@ def baseline_snip_jit(
 ) -> np.ndarray:
     """Parallel SNIP dispatcher for flat spectra."""
     out = np.empty(flat.size, dtype=np.float64)
-    offsets = _lengths_to_offsets(lengths)
+    offsets = lengths_to_offsets(lengths)
 
     for idx in prange(lengths.size):  # pylint: disable=not-an-iterable
         start = offsets[idx]
@@ -297,7 +297,7 @@ def baseline_snip_numba(
         raise ValueError("intensity must be a 1D numpy array")
 
     target_dtype = intensity.dtype
-    intensity_arr, lengths_arr = _prepare_intensity_inputs(intensity, lengths)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
     if lengths_arr.ndim != 1:
         raise ValueError("lengths must be a 1D array")
@@ -366,7 +366,7 @@ def baseline_locmin_numba(
 
     iter_i = int(niter)
     target_dtype = intensity.dtype
-    intensity_arr, lengths_arr = _prepare_intensity_inputs(intensity, lengths)
+    intensity_arr, lengths_arr = prepare_flat_inputs(intensity, lengths)
 
     if lengths_arr.size == 0:
         return np.array([], dtype=target_dtype)

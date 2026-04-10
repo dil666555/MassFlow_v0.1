@@ -113,7 +113,7 @@ def _normalize_flat_jit(
     res = np.zeros(flat.size, dtype=flat.dtype)
     offsets = lengths_to_offsets(lengths)
 
-    for p in prange(lengths.size):
+    for p in prange(lengths.size): # pylint: disable=not-an-iterable
         start = offsets[p]
         end = offsets[p + 1]
         if end > start:

@@ -2,7 +2,6 @@ from typing import Sequence
 import numpy as np
 from massflow.module import SpectrumImzML, Spectrum
 from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
-from massflow.preprocess.helper.normalizer_helper import normalizer
 
 from massflow.tools.logger import get_logger
 logger = get_logger("massflow.preprocess")
@@ -166,15 +165,8 @@ class BatchPreprocess:
         method_norm = (method or "tic").strip().lower()
         supported_methods = {"tic", "rms", "median"}
         if method_norm not in supported_methods:
-            logger.error(
-                "normalization_batch only supports tic/rms/median. "
-                "Use FlatPreprocess.normalization_flat for *_numba methods. got=%s",
-                method,
-            )
-            raise ValueError(
-                "normalization_batch only supports: tic, rms, median. "
-                "Use FlatPreprocess.normalization_flat for *_numba methods."
-            )
+            logger.error("normalization_batch only supports tic/rms/median. ")
+            raise ValueError("normalization_batch only supports: tic, rms, median. ")
 
         normalized_spectra: list[SpectrumImzML] = []
         for spectrum in batch_spectra:

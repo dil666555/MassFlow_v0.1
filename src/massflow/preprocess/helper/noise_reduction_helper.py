@@ -11,9 +11,8 @@ from scipy import stats
 from scipy import signal as scipy_signal, linalg
 from massflow.preprocess.numba.noise_reduction_numba import ns_signal_pre
 from massflow.tools.logger import get_logger
-from massflow.tools.funs import _dispatch_with_supported_kwargs
 from massflow.module import Spectrum
-from massflow.tools import _dispatch_with_supported_kwargs
+from massflow.tools import dispatch_with_supported_kwargs
 from massflow.preprocess.numba.noise_reduction_numba import (
     smooth_signal_savgol_numba,
     smooth_ns_signal_gaussian_numba,
@@ -554,7 +553,7 @@ def smoother(
     if target_func is None:
         raise ValueError(f"Unsupported smoothing method: {method}")
 
-    return _dispatch_with_supported_kwargs(
+    return dispatch_with_supported_kwargs(
         target_func,
         intensity=input_signal,
         flat=input_signal,
