@@ -1,14 +1,11 @@
 import os
 from inspect import signature
 from typing import Any, Callable, Optional
-
-import numpy as np
 from numba import njit
-
+import numpy as np
 
 def is_valid_file(path):
     return os.path.exists(path) and os.path.getsize(path) > 0
-
 
 def _dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> np.ndarray:
     """Dispatch to function with only supported kwargs."""
@@ -16,7 +13,6 @@ def _dispatch_with_supported_kwargs(func: Callable[..., Any], **kwargs: Any) -> 
     filtered_kwargs = {name: value for name, value in kwargs.items() if name in supported}
     result = func(**filtered_kwargs)
     return np.asarray(result)
-
 
 def prepare_flat_inputs(
     intensity: np.ndarray,
@@ -40,7 +36,6 @@ def prepare_flat_inputs(
             raise ValueError("sum(lengths) must equal intensity.size")
 
     return intensity_arr, lengths_arr
-
 
 @njit(cache=True)
 def lengths_to_offsets(lengths: np.ndarray) -> np.ndarray:

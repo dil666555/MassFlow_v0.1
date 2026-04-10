@@ -2,7 +2,6 @@
 Author: MassFlow Development Team Bionet/NeoNexus lyk
 License: See LICENSE file in project root
 """
-
 from typing import Any, Callable, Optional
 import numpy as np
 import pywt
@@ -14,6 +13,7 @@ from massflow.preprocess.numba.noise_reduction_numba import ns_signal_pre
 from massflow.tools.logger import get_logger
 from massflow.tools.funs import _dispatch_with_supported_kwargs
 from massflow.module import Spectrum
+from massflow.tools import _dispatch_with_supported_kwargs
 from massflow.preprocess.numba.noise_reduction_numba import (
     smooth_signal_savgol_numba,
     smooth_ns_signal_gaussian_numba,
@@ -453,11 +453,10 @@ def smooth_signal_loess(intensity: np.ndarray, window: int = 5):
     x1 = np.arange(1.0 - halfw, (halfw - 1.0) + 1)
 
     weight = (1.0 - np.divide(np.abs(x1), halfw) ** 3.0) ** 1.5
-    v = (
-        np.vstack(
+    v = (np.vstack(
             (np.hstack(weight), np.hstack(weight * x1), np.hstack(weight * x1 * x1))
-        )
-    ).transpose()
+        )).transpose()
+
     q, _ = linalg.qr(v, mode="economic")  # type: ignore
 
     alpha = np.dot(q[halfw - 1,], q.transpose())  # type: ignore
@@ -468,9 +467,7 @@ def smooth_signal_loess(intensity: np.ndarray, window: int = 5):
     v = (np.vstack((np.hstack(np.ones([1, window - 1])), np.hstack(x1), np.hstack(x1 * x1)))).transpose()  # type: ignore
 
     for j in np.arange(1, (halfw) + 1):
-        weight = (
-            1.0 - np.divide(np.abs((np.arange(1, window) - j)), window - j) ** 3.0
-        ) ** 1.5
+        weight = (1.0 - np.divide(np.abs((np.arange(1, window) - j)), window - j) ** 3.0) ** 1.5
         w = (np.kron(np.ones((3, 1)), weight)).transpose()
         q, _ = linalg.qr(v * w, mode="economic")  # type: ignore
 
@@ -530,8 +527,6 @@ def smoother(
         ValueError: If `method` is unsupported or parameter combinations are invalid.
         TypeError: If input intensity is invalid or `coef` is not 1D.
     """
-
-
     # Normalize method and validate supported set
     method_norm = (method or "ma").strip().lower()
 

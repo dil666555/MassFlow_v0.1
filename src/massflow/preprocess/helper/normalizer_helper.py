@@ -1,6 +1,6 @@
 import numpy as np
-from massflow.tools.logger import get_logger
 from typing import Optional
+from massflow.tools.logger import get_logger
 from massflow.preprocess.numba.normalization_numba import normalizer_numba
 from massflow.tools.funs import _dispatch_with_supported_kwargs
 
@@ -182,7 +182,6 @@ def normalizer(
     scale_method: str = 'none',
     method: str = "tic",
     scale: float = 1.0,
-    numba_max_threads: Optional[int] = None,
     lengths: Optional[np.ndarray] = None,
 ):
     """
@@ -215,11 +214,11 @@ def normalizer(
     # Normalize and validate method
     method_norm = (method or "tic").strip().lower()
     scale_method_norm = (scale_method or 'none').strip().lower()
-    
+
     # Check if Numba backend is requested via suffix
     is_numba = method_norm.endswith("_numba")
     base_method = method_norm.replace("_numba", "") if is_numba else method_norm
-    
+
     supported = {"tic", "rms", "median"}
     if base_method not in supported:
         logger.error("Unsupported normalization method: %s. Use one of: tic, rms, median (suffix _numba for acceleration)", method)
@@ -233,7 +232,6 @@ def normalizer(
             method=base_method,
             scale=scale,
             scale_method=scale_method_norm,
-            numba_max_threads=numba_max_threads,
             lengths=lengths,
         )
     else:

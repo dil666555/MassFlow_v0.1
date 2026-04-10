@@ -1,6 +1,7 @@
 from typing import Optional
 import numpy as np
 
+from massflow.preprocess.helper.baseline_correction_helper import baseline_corrector
 from massflow.preprocess.helper.noise_reduction_helper import smoother
 from massflow.preprocess.helper.normalizer_helper import normalizer
 from massflow.tools.logger import get_logger
@@ -85,3 +86,49 @@ class FlatPreprocess:
             scale_method=scale_method,
             lengths=lengths,
         )
+
+    @staticmethod
+    def baseline_reduction_flat(
+        intensity: np.ndarray,
+        method: str = "locmin_numba",
+        smooth: str = "none",
+        span: float = 0.1,
+        s: float | None = 0.0,
+        upper: bool = False,
+        width: int = 5,
+        lam: float = 1e7,
+        p: float = 0.01,
+        niter: int = 15,
+        baseline_scale: float = 1.0,
+        m: int | None = None,
+        decreasing: bool = True,
+        lengths: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Perform flat-mode baseline reduction and return corrected flat intensity.
+
+        Supported methods are limited to:
+        - ``locmin_numba``
+        - ``snip_numba``
+        """
+        method_norm = (method or "").strip().lower()
+        supported_methods = {"locmin_numba", "snip_numba"}
+        if method_norm not in supported_methods:
+            raise ValueError("baseline_reduction_flat only supports: locmin_numba, snip_numba")
+
+        corrected, _ = baseline_corrector(
+            intensity=intensity,
+            method=method_norm,
+            smooth=smooth,
+            span=span,
+            s=s,
+            upper=upper,
+            width=width,
+            lam=lam,
+            p=p,
+            niter=niter,
+            baseline_scale=baseline_scale,
+            m=m,
+            decreasing=decreasing,
+            lengths=lengths,
+        )
+        return corrected

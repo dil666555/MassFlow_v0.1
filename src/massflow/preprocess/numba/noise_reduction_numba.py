@@ -197,8 +197,238 @@ def _ns_bilateral_kernel(
     return out
 
 
+@njit(cache=True, fastmath=True)
+def _lowest_numba(
+    x: np.ndarray,
+    y: np.ndarray,
+    xs: float,
+    nleft: int,
+    nright: int,
+    w: np.ndarray,
+    userw: bool,
+    rw: np.ndarray,
+    range_x: float,
+) -> tuple[float, bool, int]:
+    """Local weighted fit at a single x position (LOWESS lowest step)."""
+    n = x.size
+    h = max(xs - x[nleft], x[nright] - xs)
+    h9 = 0.999 * h
+    h1 = 0.001 * h
+
+    weight_sum = 0.0
+    j = nleft
+    while j < n:
+        wj = 0.0
+        r = abs(x[j] - xs)
+        if r <= h9:
+            if r <= h1:
+                wj = 1.0
+            else:
+                t = 1.0 - (r / h) ** 3
+                wj = t * t * t
+            if userw:
+                wj *= rw[j]
+            weight_sum += wj
+        elif x[j] > xs:
+            break
+        w[j] = wj
+        j += 1
+
+    nrt = j - 1
+    if weight_sum <= 0.0:
+        return 0.0, False, nrt
+
+    for j in range(nleft, nrt + 1):
+        w[j] /= weight_sum
+
+    if h > 0.0:
+        x_center = 0.0
+        for j in range(nleft, nrt + 1):
+            x_center += w[j] * x[j]
+        b = xs - x_center
+        c = 0.0
+        for j in range(nleft, nrt + 1):
+            dx = x[j] - x_center
+            c += w[j] * dx * dx
+        if np.sqrt(c) > 0.001 * range_x:
+            b /= c
+            for j in range(nleft, nrt + 1):
+                w[j] *= b * (x[j] - x_center) + 1.0
+
+    ys = 0.0
+    for j in range(nleft, nrt + 1):
+        ys += w[j] * y[j]
+    return ys, True, nrt
+
+
+@njit(cache=True, fastmath=True)
+def _lowess_core(
+    x: np.ndarray,
+    y: np.ndarray,
+    f: float,
+    nsteps: int,
+    delta: float,
+) -> np.ndarray:
+    """Numba LOWESS core (lowest + clowess pipeline)."""
+    n = x.size
+    ys = np.empty(n, dtype=np.float64)
+    if n == 0:
+        return ys
+    if n == 1:
+        ys[0] = y[0]
+        return ys
+
+    ns = max(2, min(n, int(f * n + 1.0e-7)))
+    rw = np.ones(n, dtype=np.float64)
+    res = np.empty(n, dtype=np.float64)
+    w = np.zeros(n, dtype=np.float64)
+    range_x = x[n - 1] - x[0]
+
+    it = 0
+    while it <= nsteps:
+        nleft = 0
+        nright = ns - 1
+        last = -1
+        i = 0
+
+        while True:
+            if nright < n - 1:
+                d1 = x[i] - x[nleft]
+                d2 = x[nright + 1] - x[i]
+                if d1 > d2:
+                    nleft += 1
+                    nright += 1
+                    continue
+
+            yi, ok, _ = _lowest_numba(
+                x, y, x[i], nleft, nright, w, it > 0, rw, range_x
+            )
+            ys[i] = yi if ok else y[i]
+
+            if last < i - 1:
+                denom = x[i] - x[last]
+                if denom != 0.0:
+                    for j in range(last + 1, i):
+                        alpha = (x[j] - x[last]) / denom
+                        ys[j] = alpha * ys[i] + (1.0 - alpha) * ys[last]
+                else:
+                    for j in range(last + 1, i):
+                        ys[j] = ys[i]
+
+            last = i
+            cut = x[last] + delta
+            i_scan = last + 1
+            while i_scan < n:
+                if x[i_scan] > cut:
+                    break
+                if x[i_scan] == x[last]:
+                    ys[i_scan] = ys[last]
+                    last = i_scan
+                i_scan += 1
+
+            next_i = i_scan - 1
+            i = last + 1 if (last + 1) > next_i else next_i
+            if last >= n - 1:
+                break
+
+        for k in range(n):
+            res[k] = y[k] - ys[k]
+
+        if it >= nsteps:
+            break
+
+        sc = 0.0
+        for k in range(n):
+            rk = abs(res[k])
+            rw[k] = rk
+            sc += rk
+        sc /= n
+
+        cmad = 6.0 * np.median(rw)
+        if cmad < 1.0e-7 * sc:
+            break
+
+        c9 = 0.999 * cmad
+        c1 = 0.001 * cmad
+        for k in range(n):
+            rk = abs(res[k])
+            if rk <= c1:
+                rw[k] = 1.0
+            elif rk <= c9:
+                t = 1.0 - (rk / cmad) ** 2
+                rw[k] = t * t
+            else:
+                rw[k] = 0.0
+
+        it += 1
+
+    return ys
+
+
 
 # ==================== Non-JIT wrappers and preprocessing ====================
+
+def smooth_lowess_numba(
+    x: Optional[np.ndarray] = None,
+    y: Optional[np.ndarray] = None,
+    f: float = 2.0 / 3.0,
+    iter_count: int = 3,
+    delta: Optional[float] = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    LOWESS wrapper compatible with R-style arguments.
+    Returns sorted x and smoothed y aligned to sorted x.
+    
+    Parameters:
+        x: x-coordinates. If None, automatically generated as np.arange(y.size).
+        y: y-coordinates (required).
+        f: smoothing parameter (0 < f <= 1).
+        iter_count: number of robustness iterations.
+        delta: distance to consider points as tied in x.
+    """
+    if y is None:
+        raise ValueError("y must not be None")
+
+    # Auto-generate x if not provided
+    if x is None:
+        x = np.arange(y.size, dtype=np.float64)
+
+    x_dtype = x.dtype
+    y_dtype = y.dtype
+
+    if x.size == 0:
+        return x, y
+    if (x.ndim != 1
+        or y.ndim != 1
+        or x.size != y.size
+        or not np.isfinite(f)
+        or f <= 0.0
+        or not isinstance(iter_count, (int, np.integer))
+        or iter_count < 0
+    ):
+        raise ValueError(
+            "x and y must be 1D arrays with same length; "
+            "f must be finite and > 0; "
+            "iter_count (R iter) must be an integer >= 0"
+        )
+
+    # Keep original input dtypes for output, but run LOWESS in float64.
+    x64 = np.ascontiguousarray(x.astype(np.float64, copy=False))
+    y64 = np.ascontiguousarray(y.astype(np.float64, copy=False))
+
+    # order = np.argsort(x_arr)
+    # x_arr = np.ascontiguousarray(x_arr[order])
+    # y_arr = np.ascontiguousarray(y_arr[order])
+
+    if delta is None:
+        delta_val = 0.01 * (x64[-1] - x64[0]) if x64.size > 1 else 0.0
+    else:
+        delta_val = float(delta)
+        if not np.isfinite(delta_val) or delta_val < 0.0:
+            raise ValueError("delta must be finite and >= 0")
+
+    y_fit64 = _lowess_core(x64, y64, float(f), int(iter_count), float(delta_val))
+    return x.astype(x_dtype, copy=False), y_fit64.astype(y_dtype, copy=False)
 
 
 def smooth_signal_ma_numba(
@@ -216,7 +446,6 @@ def smooth_signal_ma_numba(
     return _ma_flat_jit(intensity_arr, window, lengths_arr)
 
 
-# --- Python wrapper layer (handles kernel pre‑computation) ---
 def smooth_signal_savgol_numba(
     intensity: np.ndarray,
     window: int = 5,

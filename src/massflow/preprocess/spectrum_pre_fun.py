@@ -262,7 +262,6 @@ class SpectrumPreprocess:
 
         corrected_intensity, _ = baseline_corrector(
             intensity,
-            index=index,
             method=method,
             lam=lam,
             p=p,
