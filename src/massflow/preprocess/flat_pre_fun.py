@@ -114,7 +114,7 @@ class FlatPreprocess:
         ...
 
     @staticmethod
-    def est_nosise_flat(
+    def est_noise_flat(
         mz_data: np.ndarray,
         intensity: np.ndarray,
         lengths: np.ndarray,
