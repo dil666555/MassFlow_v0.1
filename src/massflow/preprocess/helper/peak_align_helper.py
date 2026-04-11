@@ -8,7 +8,7 @@ from massflow.data_manager import MSDataManager
 import massflow.preprocess.numba.peak_align_numba as compute
 from massflow.tools.logger import get_logger
 
-logger = get_logger("peak_alignment")
+logger = get_logger("massflow.peak_alignment")
 
 MIN_RELATIVE_RES = 5e-7  # 0.5 ppm
 MIN_ABSOLUTE_RES = 1e-4  # 0.0001 Da
@@ -65,7 +65,7 @@ def estimate_resolution(
     a, b = xs[:-1], xs[1:]
     rx = 2.0 * (b - a) / (b + a)
 
-    eps = np.finfo(float).eps
+    eps = np.finfo(float).eps # pylint: disable=no-member
     dx = dx[dx > eps]
     rx = rx[np.abs(rx) > eps]
 
