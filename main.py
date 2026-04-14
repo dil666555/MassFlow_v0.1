@@ -1,25 +1,35 @@
 from massflow.data_manager import MSDataManagerImzML
 from massflow.tools import get_logger
+from massflow.tools.plot import plot_spectrum
 from massflow.module import MassSpectrumSet
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
-from massflow.preprocess.spectrum_pre_fun import SpectrumPreprocess
-import numpy as np
+from pathlib import Path
 
 logger = get_logger("massflow")
 
 
-def calculate_snr_details(spectrum, method: str = "sd") -> tuple[float, float, float]:
-    """Calculate signal level, noise level, and SNR for one spectrum."""
-    intensity = spectrum.intensity
-    signal_level = float(np.percentile(intensity, 95))
-    noise = float(np.mean(SpectrumPreprocess.noise_estimation_spectrum(spectrum, method=method)))
-    snr = float(signal_level / noise) if noise > 0 else float("inf")
-    return signal_level, noise, snr
+def plot_before_after(
+    before_spectrum,
+    after_spectrum,
+    save_path: str | None = None,
+) -> None:
+    """Display overlay plot by default; save when a path is provided."""
+    output_path = None
+    if save_path:
+        output_path = Path(save_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
-def log_snr_details(tag: str, signal_level: float, noise: float, snr: float) -> None:
-    """Log signal level, noise level, and SNR for one spectrum."""
-    logger.info(f"[{tag}] signal_level(95th)={signal_level:.4f}, noise={noise:.4f}, SNR={snr:.4f}")
+    plot_spectrum(
+        base=before_spectrum,
+        target=after_spectrum,
+        save_path=str(output_path) if output_path else None,
+        overlay=True,
+        metrics_box=True,
+    )
+    if output_path:
+        logger.info(f"Saved before/after spectrum plot: {output_path}")
+    else:
+        logger.info("Displayed before/after spectrum plot window.")
 
 
 def main():
@@ -27,9 +37,6 @@ def main():
 
     with MSDataManagerImzML(filepath=file_path) as data_manager:
         data_manager.load_head_data()
-
-        pre_first_signal, pre_first_noise, pre_first_snr = calculate_snr_details(data_manager.ms[0])
-        pre_last_signal, pre_last_noise, pre_last_snr = calculate_snr_details(data_manager.ms[-1])
 
         # Use flat_generator + flat numba noise reduction for faster compute path.
         processed_data_manager = MSDataManagerImzML(MassSpectrumSet(), temp_dir="temp")
@@ -57,30 +64,9 @@ def main():
         processed_data_manager.close_writer()
         processed_data_manager.load_head_data()
 
-        logger.info(
-            "Noise reduction finished with flat_generator (method=gaussian_numba). "
-            f"Processed spectra: {len(processed_data_manager.ms)}"
-        )
-
-        post_first_signal, post_first_noise, post_first_snr = calculate_snr_details(processed_data_manager.ms[0])
-        post_last_signal, post_last_noise, post_last_snr = calculate_snr_details(processed_data_manager.ms[-1])
-
-        log_snr_details("Before processing - First spectrum", pre_first_signal, pre_first_noise, pre_first_snr)
-        log_snr_details("Before processing - Last spectrum", pre_last_signal, pre_last_noise, pre_last_snr)
-        log_snr_details("After processing - First spectrum", post_first_signal, post_first_noise, post_first_snr)
-        log_snr_details("After processing - Last spectrum", post_last_signal, post_last_noise, post_last_snr)
-
-        logger.info(
-            "SNR change - First spectrum: %.4f -> %.4f (delta=%.4f)",
-            pre_first_snr,
-            post_first_snr,
-            post_first_snr - pre_first_snr,
-        )
-        logger.info(
-            "SNR change - Last spectrum: %.4f -> %.4f (delta=%.4f)",
-            pre_last_snr,
-            post_last_snr,
-            post_last_snr - pre_last_snr,
+        plot_before_after(
+            before_spectrum=data_manager.ms[0],
+            after_spectrum=processed_data_manager.ms[0],
         )
 
         processed_data_manager.close()
