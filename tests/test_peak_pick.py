@@ -1,50 +1,76 @@
+import os
 import time
-from typing import Sequence
+from typing import Literal
 import pytest
 import numpy as np
 from massflow.module import MassSpectrumSet
 from massflow.data_manager import MSDataManagerImzML
-from massflow.preprocess.preprocessor import Preprocessor
+from massflow.preprocess.batch_pre_fun import BatchPreprocess
+from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.r_preprocess import set_default_r_home
 from massflow.tools.logger import get_logger
 
-logger = get_logger("test_peak_pick")
+logger = get_logger("massflow.test_peak_pick")
+
+Backend = Literal["python", "cardinal"]
 
 FILEPATH = r"./data/example.imzML"
 MZ_RANGES = [(500, 600)]
 TOLERANCE = 0.10
 ROUND = 1
 
-set_default_r_home("r_home_path_here")  # set R_HOME path here
+if os.environ.get("R_HOME"):
+    set_default_r_home(os.environ["R_HOME"])
 
 def run_pick_test(
     data: MSDataManagerImzML,
-    width: int | Sequence[int] = 2,
-    method: str = 'scipy',
+    width: int = 2,
+    method: str = 'origin',
     relheight: float = 0.1,
     snr: float = 3.0,
     return_type: str = 'height',
     batch_size: int = 256,
     use_numba: bool = True,
-    backend: str = "python"
+    backend: Backend = "python"
     ) -> MSDataManagerImzML:
-    """Run peak picking test using old or new method."""
-
-    return (
-        Preprocessor(
-            data,
-            batch_size=batch_size,)
-        .peak_pick(
+    """Run peak picking test without the preprocessing pipeline."""
+    if backend == "cardinal":
+        return CardinalAdapter.peak_pick(
+            data_manager=data,
             width=width,
             method=method,
-            relheight=relheight,
             snr=snr,
             return_type=return_type,
-            use_numba=use_numba,
-            backend=backend,
         )
-        .start()
-    )
+
+    processed_ms = MassSpectrumSet()
+    processed_manager = MSDataManagerImzML(processed_ms)
+    processed_manager.copy_meta(data)
+
+    writer = processed_manager.writer
+
+    try:
+        for batch in data.batch_generator(batch_size=batch_size):
+            try:
+                processed_batch = BatchPreprocess.peak_pick_batch(
+                    batch_spectra=batch,
+                    width=width,
+                    method=method,
+                    relheight=relheight,
+                    snr=snr,
+                    return_type=return_type,
+                    use_numba=use_numba,
+                )
+                processed_manager.swap_batch_data_out2disk(batch=processed_batch, writer=writer)
+            finally:
+                data.clear_batch_data_memory(batch=batch)
+    except Exception:
+        processed_manager.close()
+        raise
+
+    processed_manager.close_writer()
+    processed_manager.load_head_data()
+    return processed_manager
 
 def compare_pick_result(
     py_manager: MSDataManagerImzML,
@@ -125,14 +151,14 @@ class TestPeakPick:
         self,
         benchmark,
         data_manager: MSDataManagerImzML, # pylint: disable=redefined-outer-name
-        width: int | Sequence[int],
+        width: int,
         method: str,
         relheight: float,
         snr: float,
         return_type: str,
         batch_size: int,
         use_numba: bool,
-        backend: str,
+        backend: Backend,
     ) -> None:
         """Performance Test: Run peak picking benchmark."""
 
@@ -164,7 +190,7 @@ class TestPeakPick:
     def test_peak_pick_validation(
         self,
         data_manager: MSDataManagerImzML, # pylint: disable=redefined-outer-name
-        width: int | Sequence[int],
+        width: int,
         py_method: str,
         r_method: str,
         relheight: float,

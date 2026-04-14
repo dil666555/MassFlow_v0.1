@@ -36,7 +36,7 @@ from typing import Union, Optional, Sequence
 import numpy as np
 from massflow.module import SpectrumImzML, Spectrum
 from massflow.tools.logger import get_logger
-from massflow.preprocess.helper.peak_align_helper import align_spectrum
+from massflow.preprocess.helper.peak_align_helper import peak_aligner
 from massflow.preprocess.helper.noise_reduction_helper import smoother
 from massflow.preprocess.helper.normalizer_helper import normalizer
 from massflow.preprocess.helper.baseline_correction_helper import baseline_corrector
@@ -87,14 +87,15 @@ class SpectrumPreprocess:
             raise ValueError("Input spectrum must have both intensity and mz_list data.")
 
     @staticmethod
-    def peak_pick_spectrum( data: Spectrum,
-                            width: int | Sequence[int] = 2,
-                            method: str = 'origin',
-                            relheight: float = 0.012,
-                            snr: float = 2.0,
-                            return_type: str = 'height',
-                            use_numba: bool = True
-                            ) -> SpectrumImzML:
+    def peak_pick_spectrum(
+        data: Spectrum,
+        width: int | Sequence[int] = 2,
+        method: str = 'origin',
+        relheight: float = 0.012,
+        snr: float = 2.0,
+        return_type: str = 'height',
+        use_numba: bool = True
+    ) -> SpectrumImzML:
         """
         Perform peak picking on a single spectrum and return a reduced spectrum.
 
@@ -115,15 +116,16 @@ class SpectrumPreprocess:
 
         intensity = data.intensity
         index = data.mz_list
-        peak_intensity,peak_index = peak_pick_fun(intensity, # type: ignore
-                                                  index, # type: ignore
-                                                  width=width,
-                                                  method=method,
-                                                  relheight=relheight,
-                                                  snr=snr,
-                                                  return_type=return_type,
-                                                  use_numba=use_numba
-                                                  )
+        peak_intensity,peak_index = peak_pick_fun(
+            intensity, # type: ignore
+            index, # type: ignore
+            width=width,
+            method=method,
+            relheight=relheight,
+            snr=snr,
+            return_type=return_type,
+            use_numba=use_numba
+        )
 
         return SpectrumImzML(
             mz_list=peak_index,
@@ -166,11 +168,12 @@ class SpectrumPreprocess:
         )
 
     @staticmethod
-    def peak_align_spectrum(spectrum: Spectrum,
-                            reference: np.ndarray,
-                            tolerance: float,
-                            units: str = 'ppm',
-                            ) -> SpectrumImzML:
+    def peak_align_spectrum(
+        spectrum: Spectrum,
+        reference: np.ndarray,
+        tolerance: float,
+        units: str = 'ppm',
+    ) -> SpectrumImzML:
         """
         Align peaks across spectra in MS data.
         This method can align a single spectrum (Spectrum).
@@ -195,10 +198,25 @@ class SpectrumPreprocess:
 
         tolerance = tolerance * 1e-6 if units == "ppm" else tolerance
 
-        return align_spectrum(spectrum=spectrum,
-                              reference=reference,
-                              tolerance=tolerance,
-                              units=units)
+        mz_arr = np.asarray(spectrum.mz_list, dtype=np.float64)
+        intensity_arr = np.asarray(spectrum.intensity, dtype=np.float64)
+
+        aligned_result = peak_aligner(
+            mz_data=mz_arr,
+            intensity=intensity_arr,
+            lengths=np.array([len(mz_arr)], dtype=np.int32),
+            reference=reference,
+            tolerance=tolerance,
+            units=units
+        )
+
+        aligned_intensity = aligned_result[0]
+
+        return SpectrumImzML(
+            mz_list=reference,
+            intensity=aligned_intensity,
+            coordinates=spectrum.coordinate,
+        )
 
     @staticmethod
     def baseline_correction_spectrum(
