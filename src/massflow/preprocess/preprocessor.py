@@ -53,6 +53,7 @@ class Preprocessor(PreprocessorAPI):
         "peak_pick": 40,
         "peak_align": 50,
     }
+    _PROFILE_ONLY_TASKS = frozenset({"baseline_correction", "noise_reduction", "peak_pick"})
 
     def __init__(
         self,
@@ -107,12 +108,41 @@ class Preprocessor(PreprocessorAPI):
             return (self._OPERATION_ORDER.get(task.name, 10_000), task.sequence)
 
         ordered = sorted(self._tasks, key=sort_key)
+        spectrum_type = self._resolve_input_spectrum_type()
+
+        if spectrum_type == "centroid":
+            dropped_task_names = [task.name for task in ordered if task.name in self._PROFILE_ONLY_TASKS]
+            if dropped_task_names:
+                logger.warning(
+                    f"Detected centroid spectra; dropping unsupported tasks: {dropped_task_names}"
+                )
+                ordered = [task for task in ordered if task.name not in self._PROFILE_ONLY_TASKS]
 
         if ordered:
             task_names = [f"{task.name}:{task.scope}" for task in ordered]
             logger.info(f"async_pipeline_task_order: {task_names}")
+        else:
+            logger.warning("No supported preprocessing tasks remain after task arrangement.")
 
         return ordered
+
+    def _resolve_input_spectrum_type(self) -> str:
+        """Resolve profile/centroid metadata before arranging tasks."""
+        meta = self.data_manager.ms.meta
+
+        if meta.profile_spectrum is None and meta.centroid_spectrum is None:
+            raise ValueError(
+                "spectrum type metadata missing in imzML file: both 'profile_spectrum' and 'centroid_spectrum' are not set. "
+                "Please set 'dm.ms.meta.profile_spectrum = True' or 'dm.ms.meta.centroid_spectrum = True' before start()."
+            )
+
+        if meta.profile_spectrum is True and meta.centroid_spectrum is True:
+            raise ValueError(
+                "invalid spectrum type metadata in imzML file: both 'profile_spectrum' and 'centroid_spectrum' are set to True. "
+                "Please set only one of them to True and other one is None."
+            )
+
+        return "profile" if meta.profile_spectrum is True else "centroid"
 
     def _set_error(
         self,
