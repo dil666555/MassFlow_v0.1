@@ -4,42 +4,37 @@ from typing import Any, Literal
 
 import numpy as np
 
+from massflow.tools.logger import get_logger
+
+logger = get_logger("massflow.tools.infer_spectrum_type")
+
 SpectrumType = Literal["profile", "centroid"]
 
 
-def resolve_spectrum_type(meta: Any) -> SpectrumType:
+def resolve_spectrum_type(data_manager: Any) -> SpectrumType:
     """Resolve spectrum type from canonical metadata flags."""
-    if meta is None:
+    if data_manager.ms.meta is None:
         raise ValueError("spectrum metadata is missing. Please load metadata before resolving spectrum type.")
 
-    profile_value = getattr(meta, "profile_spectrum", None)
-    centroid_value = getattr(meta, "centroid_spectrum", None)
+    profile = getattr(data_manager.ms.meta, "profile_spectrum", None)
+    centroid = getattr(data_manager.ms.meta, "centroid_spectrum", None)
 
-    if profile_value is True and centroid_value is None:
+    if profile is True and centroid is None:
         return "profile"
 
-    if profile_value is None and centroid_value is True:
+    if profile is None and centroid is True:
         return "centroid"
 
-    if profile_value is None and centroid_value is None:
-        raise ValueError(
-            "spectrum type metadata missing in imzML file: both 'profile_spectrum' and 'centroid_spectrum' are not set. "
-            "Please set 'profile_spectrum=True, centroid_spectrum=None' for profile spectra or "
-            "'profile_spectrum=None, centroid_spectrum=True' for centroid spectra before writing or preprocessing."
-        )
-
-    if profile_value is True and centroid_value is True:
-        raise ValueError(
-            "invalid spectrum type metadata in imzML file: both 'profile_spectrum' and 'centroid_spectrum' are set to True. "
-            "Expected exactly one flag to be True and the other to be None."
-        )
+    if (profile is None and centroid is None) or (profile is True and centroid is True):
+        logger.info("Spectrum type is all True or all None. Falling back to inference.")
+        inferred_spectrum_type = infer_spectrum_type(data_manager)
+        logger.info(f"Inferred spectrum type: {inferred_spectrum_type!r}. Setting metadata accordingly.")
+        return inferred_spectrum_type
 
     raise ValueError(
-        "invalid spectrum type metadata in imzML file: expected exactly one of "
-        "'profile_spectrum' or 'centroid_spectrum' to be True and the other to be None, "
-        f"got profile_spectrum={profile_value!r}, centroid_spectrum={centroid_value!r}."
+        f"invalid spectrum type metadata in imzML file: profile_spectrum={profile!r}, centroid_spectrum={centroid!r}. "
+        "Expected exactly one flag to be True and the other to be None."
     )
-
 
 def infer_spectrum_type(data_manager: Any, *, sample_size: int = 8) -> SpectrumType:
     """Infer spectrum type directly from spectra stored in a data manager."""

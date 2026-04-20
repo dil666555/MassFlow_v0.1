@@ -108,12 +108,11 @@ class Preprocessor(PreprocessorAPI):
         )
         return self
 
-    def _sorted_tasks(self) -> list[PreprocessTask]:
+    def _sorted_tasks(self, spectrum_type) -> list[PreprocessTask]:
         def sort_key(task: PreprocessTask) -> tuple[int, int]:
             return (self._OPERATION_ORDER.get(task.name, 10_000), task.sequence)
 
         ordered = sorted(self._tasks, key=sort_key)
-        spectrum_type = self._resolve_input_spectrum_type()
 
         if spectrum_type == "centroid":
             dropped_task_names = [task.name for task in ordered if task.name in self._PROFILE_ONLY_TASKS]
@@ -133,7 +132,7 @@ class Preprocessor(PreprocessorAPI):
 
     def _resolve_input_spectrum_type(self) -> SpectrumType:
         """Resolve profile/centroid metadata before arranging tasks."""
-        return resolve_spectrum_type(self.data_manager.ms.meta)
+        return resolve_spectrum_type(self.data_manager)
 
     @staticmethod
     def _resolve_output_spectrum_type(
@@ -499,9 +498,9 @@ class Preprocessor(PreprocessorAPI):
         if len(self._tasks) == 0:
             raise ValueError("No preprocessing task registered. Please register tasks before start().")
 
-        ordered_tasks = self._sorted_tasks()
         current_data_manager: MSDataManager = self.data_manager
         current_spectrum_type = self._resolve_input_spectrum_type()
+        ordered_tasks = self._sorted_tasks(current_spectrum_type)
         task_cursor = 0
 
         while task_cursor < len(ordered_tasks):
