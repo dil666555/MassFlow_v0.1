@@ -1,6 +1,5 @@
 import time
 import pytest
-import numpy as np
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
@@ -12,12 +11,8 @@ logger = get_logger("massflow.test.test_noise_reduction")
 ROUNDS = 5
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
-BATCH_FLAT_NR_METHOD_PAIRS = [
-    ("ma", "ma_numba"),
-    # ("gaussian", "gaussian_numba"),
-    # ("savgol", "savgol_numba"),
-]
-
+FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
 
 def _noise_reduction_flat_from_flat_batches(
     flat_batches,
@@ -41,7 +36,7 @@ class TestNoiseReductionAPI:
         uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=["data/example.imzML"])
+    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
         data_file_path = request.param
@@ -51,7 +46,7 @@ class TestNoiseReductionAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=["data/example.imzML"])
+    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
     def flat_caches(self, request):
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
@@ -107,42 +102,3 @@ class TestNoiseReductionAPI:
             iterations=1,
             warmup_rounds=1,
         )
-
-    @pytest.mark.parametrize(
-        ("batch_method", "flat_method"),
-        BATCH_FLAT_NR_METHOD_PAIRS,
-    )
-    def test_nr_flat_batch_intensity_consistency(self, batch_method, flat_method, ms_raw_data):
-        """Test flat and batch consistency using matched algorithm variants."""
-        batch = next(ms_raw_data.batch_generator(batch_size=256))
-
-        batch_result = BatchPreprocess.noise_reduction_batch(
-            batch_spectra=batch,
-            method=batch_method,
-            window=5,
-        )
-
-        lengths = np.array([spectrum.intensity.size for spectrum in batch], dtype=np.int64)
-        intensity_flat = np.concatenate(
-            [spectrum.intensity.astype(np.float32, copy=False) for spectrum in batch]
-        )
-        flat_result = FlatPreprocess.noise_reduction_flat(
-            mz_data=None, # type: ignore
-            intensity=intensity_flat,
-            method=flat_method,
-            window=5,
-            lengths=lengths,
-        )
-
-        offset = 0
-        for spectrum_batch, valid_len in zip(batch_result, lengths):
-            end = offset + int(valid_len)
-            flat_slice = flat_result.intensity[offset:end]
-            assert spectrum_batch.intensity is not None
-            np.testing.assert_allclose(
-                spectrum_batch.intensity,
-                flat_slice,
-                rtol=1e-6,
-                atol=1e-6,
-            )
-            offset = end

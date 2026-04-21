@@ -1,0 +1,97 @@
+import time
+import pytest
+from massflow.data_manager import MSDataManagerImzML
+from massflow.preprocess import BatchPreprocess
+from massflow.preprocess.preprocessor import Preprocessor
+from massflow.tools.dm_process import dm_process
+from massflow.tools.logger import get_logger
+
+logger = get_logger("massflow.test.test_noise_reduction")
+
+ROUNDS = 5
+BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
+FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
+FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+
+def _run_noise_reduction_flat_from_pipeline(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+    window: int,
+):
+    processed_manager = (
+        Preprocessor(ms_raw_data, batch_size=256)
+        .noise_reduction(method=method, window=window)
+        .start()
+    )
+
+    processed_manager.close()
+
+class TestNoiseReductionAPI:
+    """
+    Test suite for noise reduction API functionality and performance.
+        use :
+        uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
+    """
+
+    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
+    def ms_raw_data(self, request) -> MSDataManagerImzML:
+        """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
+        data_file_path = request.param
+        dm = MSDataManagerImzML(filepath=data_file_path)
+        dm.load_head_data()
+        return dm
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    @pytest.mark.parametrize("method", BATCH_NR_METHODS)
+    def test_nr_memory(
+        self,
+        benchmark,
+        method,
+        ms_raw_data
+    ):
+        """Test noise reduction speed for different methods."""
+        logger.info(f"Benchmarking noise reduction method={method}")
+
+        batch_kwargs = {
+            "method": method,
+            "window": 5,
+
+        }
+
+        benchmark.pedantic(
+            dm_process,
+            args=(
+                ms_raw_data,
+                256,
+                BatchPreprocess.noise_reduction_batch,
+                batch_kwargs
+            ),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    @pytest.mark.parametrize("method", FLAT_NR_METHODS)
+    def test_nr_flat_memory(
+        self,
+        benchmark,
+        method,
+        ms_raw_data
+    ):
+        """Test flat noise reduction speed using pre-generated flat batches."""
+        logger.info(f"Benchmarking flat noise reduction method={method}")
+
+        flat_kwargs = {
+            "method": method,
+            "window": 5,
+        }
+
+        benchmark.pedantic(
+            _run_noise_reduction_flat_from_pipeline,
+            args=(ms_raw_data, flat_kwargs["method"], flat_kwargs["window"]),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
