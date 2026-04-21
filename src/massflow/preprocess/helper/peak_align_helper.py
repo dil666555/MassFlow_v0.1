@@ -3,7 +3,6 @@ from typing import Literal, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from massflow.data_manager import MSDataManager
 from massflow.tools.funs import prepare_flat_inputs, infer_shared_mz
 import massflow.preprocess.numba.peak_align_numba as compute
 from massflow.tools.logger import get_logger
@@ -121,24 +120,18 @@ def _aggregate_resolution_step(resolutions: NDArray[np.float64], binfun: str) ->
     return float(np.nanmean(resolutions))
 
 def estimate_domain_parallel(
-    data_manager: MSDataManager,
+    flat_caches,
     binfun: str = "median",
     binratio: float = 2.0,
     units: str = "relative",
-    batch_size: int = 256,
-    max_threads: int = 0,
 ) -> Tuple[NDArray, float]:
-    """Parallel domain estimation based on flat_generator batches."""
+    """Parallel domain estimation based on flat batches."""
     ref_method = "x" if units == "relative" else "abs"
     method_code = get_method_code(ref_method)
 
     stats_batches: list[NDArray[np.float64]] = []
 
-    for mz_data, _, lengths, _ in data_manager.flat_generator(
-        batch_size=batch_size,
-        include_mz=True,
-        max_threads=max_threads,
-    ):
+    for mz_data, _, lengths in flat_caches:
         if mz_data is None:
             continue
 
@@ -256,16 +249,15 @@ def merge_peaks(
     )
 
 def bin_peaks_parallel(
-    data_manager: MSDataManager,
+    flat_caches,
     domain: NDArray,
     tolerance: float,
     tol_method: str = "abs",
-    batch_size: int = 256,
-    max_threads: int = 0,
 ) -> NDArray:
-    """Parallel binning using flat_generator + parallel nearest search."""
+    """Parallel binning using flat batches + parallel nearest search."""
+    total_spectra = sum(int(np.asarray(lengths).size) for _, _, lengths in flat_caches)
     logger.info(
-        f"[parallel] Binning peaks: {len(data_manager.ms)} spectra, "
+        f"[parallel] Binning peaks: {total_spectra} spectra, "
         f"domain size {domain.size}, tolerance {tolerance}"
     )
 
@@ -273,11 +265,7 @@ def bin_peaks_parallel(
     peaks_acc = np.zeros(domain.size, dtype=np.float64)
     counts = np.zeros(domain.size, dtype=np.int64)
 
-    for mz_data, _, lengths, _ in data_manager.flat_generator(
-        batch_size=batch_size,
-        include_mz=True,
-        max_threads=max_threads,
-    ):
+    for mz_data, _, lengths in flat_caches:
         if mz_data is None:
             continue
 
@@ -385,16 +373,14 @@ def bin_peaks_parallel(
     return reference
 
 def reference_computer(
-    data_manager: MSDataManager,
+    flat_caches,
     reference: Optional[NDArray] = None,
     binfun: str = "median",
     binratio: float = 2.0,
     tolerance: Optional[float] = None,
     units: str = "ppm",
-    batch_size: int = 256,
-    max_threads: int = 2,
 ) -> Tuple[NDArray, float]:
-    """Parallel version of compute_reference based on flat_generator."""
+    """Parallel version of compute_reference based on flat batches."""
     logger.info(
         f"[parallel] Computing reference: units={units}, binfun={binfun}, binratio={binratio}"
     )
@@ -403,12 +389,10 @@ def reference_computer(
     tol_method = "x" if norm_units == "relative" else "abs"
 
     domain, estimate_tolerance = estimate_domain_parallel(
-        data_manager=data_manager,
+        flat_caches=flat_caches,
         binfun=binfun,
         binratio=binratio,
         units=norm_units,
-        batch_size=batch_size,
-        max_threads=max_threads,
     )
 
     logger.info(
@@ -421,12 +405,10 @@ def reference_computer(
         return reference, tolerance
 
     reference = bin_peaks_parallel(
-        data_manager=data_manager,
+        flat_caches=flat_caches,
         domain=domain,
         tolerance=tolerance,
         tol_method=tol_method,
-        batch_size=batch_size,
-        max_threads=max_threads,
     )
 
     logger.info(f"[parallel] Reference computed: final size={reference.size}")

@@ -22,7 +22,7 @@ def _run_peak_align_from_dm_process(
     batch_size: int,
     units: str,
 ):
-    reference, tolerance = compute_reference(ms_raw_data, units=units)
+    reference, tolerance = compute_reference(ms_raw_data, units=units, clear_memory=False)
     tolerance = tolerance * 1e6 if units == "ppm" else tolerance
     batch_kwargs = {
         "reference": reference,
@@ -38,11 +38,10 @@ def _run_peak_align_from_dm_process(
     )
 
 def _peak_align_flat_from_flat_batches(
-    ms_raw_data: MSDataManagerImzML,
     flat_batches,
     units: str,
 ):
-    reference, tolerance = reference_computer(ms_raw_data, units=units)
+    reference, tolerance = reference_computer(flat_batches, units=units)
 
     for mz_flat, intensity_flat, lengths in flat_batches:
         _ = FlatPreprocess.peak_align_flat(
@@ -111,7 +110,7 @@ class TestAlign:
 
         benchmark.pedantic(
             _peak_align_flat_from_flat_batches,
-            args=(ms_raw_data, flat_batches, units),
+            args=(flat_batches, units),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

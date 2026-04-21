@@ -440,14 +440,20 @@ class Preprocessor(PreprocessorAPI):
         tolerance = kwargs.get("tolerance")
 
         if reference is None or tolerance is None:
+            flat_caches = []
+            for mz_data, intensity, lengths, _ in data_manager.flat_generator(
+                batch_size=self.batch_size,
+                include_mz=True,
+            ):
+                flat_caches.append((mz_data, intensity, lengths))
+
             reference, tolerance = reference_computer(
-                data_manager=data_manager,
+                flat_caches,
                 reference=reference,
                 tolerance=tolerance,
                 units=units,
                 binfun=kwargs.get("binfun", "median"),
                 binratio=kwargs.get("binratio", 2.0),
-                batch_size=self.batch_size,
             )
         else:
             tolerance = tolerance * 1e-6 if units == "ppm" else tolerance

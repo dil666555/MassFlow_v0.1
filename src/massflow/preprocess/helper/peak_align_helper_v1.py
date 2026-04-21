@@ -231,6 +231,7 @@ def bin_peaks(
     tolerance: float,
     tol_method: str = "abs",
     batch_size: int = 256,
+    clear_memory: bool = True,
 ) -> NDArray:
     """
     Map peaks from multiple spectra onto a unified reference grid.
@@ -314,7 +315,8 @@ def bin_peaks(
             np.add.at(peaks_acc, matched_bins, matched_peaks)
             np.add.at(counts, matched_bins, 1)
 
-        data_manager.clear_batch_data_memory(batch)
+        if clear_memory:
+            data_manager.clear_batch_data_memory(batch)
 
     nonzero = counts != 0
     peaks_acc[nonzero] /= counts[nonzero]
@@ -488,6 +490,7 @@ def compute_reference(
         tolerance=tolerance,
         tol_method=tol_method,
         batch_size=batch_size,
+        clear_memory=clear_memory,
     )
     logger.info(f"Reference computed: final size={reference.size}")
 
