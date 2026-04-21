@@ -12,8 +12,8 @@ logger = get_logger("test_baseline")
 ROUNDS = 5
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
 
 def _baseline_reduction_flat_from_flat_batches(
     flat_batches,

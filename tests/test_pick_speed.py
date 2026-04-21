@@ -12,8 +12,8 @@ logger = get_logger("test_pick")
 ROUNDS = 5
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["quantile", "diff"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
 
 
 def _peak_pick_flat_from_flat_batches(

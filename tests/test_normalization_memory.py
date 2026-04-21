@@ -13,8 +13,8 @@ logger = get_logger("test_normalization")
 ROUNDS = 5
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
 TEMP_DIR = "./temp"
 
 def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, float]:
@@ -28,6 +28,24 @@ def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, fl
             return mz_data, ref
 
     raise ValueError("Unable to infer mz_flat/ref for ref_numba normalization")
+
+
+def _run_normalization_from_dm_process(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+):
+    batch_kwargs = {
+        "method": method,
+    }
+
+    processed_manager = dm_process(
+        ms_raw_data,
+        256,
+        BatchPreprocess.normalization_batch,
+        batch_kwargs,
+        TEMP_DIR,
+    )
+    processed_manager.close()
 
 
 def _run_normalization_from_pipeline(
@@ -80,19 +98,9 @@ class TestNormalization:
         """Benchmark batch normalization via dm_process."""
         logger.info(f"Benchmarking batch normalization method={method}")
 
-        batch_kwargs = {
-            "method": method,
-        }
-
         benchmark.pedantic(
-            dm_process,
-            args=(
-                ms_raw_data,
-                256,
-                BatchPreprocess.normalization_batch,
-                batch_kwargs,
-                TEMP_DIR,
-            ),
+            _run_normalization_from_dm_process,
+            args=(ms_raw_data, method),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

@@ -12,9 +12,36 @@ logger = get_logger("test_pick")
 ROUNDS = 5
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["quantile", "diff"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
 TEMP_DIR = "./temp"
+
+
+def _run_peak_pick_from_dm_process(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+    width: int,
+    relheight: float,
+    snr: float,
+    return_type: str,
+):
+    batch_kwargs = {
+        "width": width,
+        "method": method,
+        "relheight": relheight,
+        "snr": snr,
+        "return_type": return_type,
+        "use_numba": True,
+    }
+
+    processed_manager = dm_process(
+        ms_raw_data,
+        256,
+        BatchPreprocess.peak_pick_batch,
+        batch_kwargs,
+        TEMP_DIR,
+    )
+    processed_manager.close()
 
 
 def _run_peak_pick_from_pipeline(
@@ -59,24 +86,9 @@ class TestPick:
         """Benchmark batch peak pick via dm_process."""
         logger.info(f"Benchmarking batch peak pick method={method}")
 
-        batch_kwargs = {
-            "width": 2,
-            "method": method,
-            "relheight": 0.012,
-            "snr": 2.0,
-            "return_type": "height",
-            "use_numba": True,
-        }
-
         benchmark.pedantic(
-            dm_process,
-            args=(
-                ms_raw_data,
-                256,
-                BatchPreprocess.peak_pick_batch,
-                batch_kwargs,
-                TEMP_DIR,
-            ),
+            _run_peak_pick_from_dm_process,
+            args=(ms_raw_data, method, 2, 0.012, 2.0, "height"),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

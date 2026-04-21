@@ -12,8 +12,30 @@ logger = get_logger("test_baseline")
 ROUNDS = 5
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+TEMP_DIR = "./temp"
+
+
+def _run_baseline_reduction_from_dm_process(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+    width: int,
+):
+    batch_kwargs = {
+        "method": method,
+        "width": width,
+        "smooth": "none",
+    }
+
+    processed_manager = dm_process(
+        ms_raw_data,
+        256,
+        BatchPreprocess.baseline_correction_batch,
+        batch_kwargs,
+        TEMP_DIR,
+    )
+    processed_manager.close()
 
 def _run_baseline_reduction_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
@@ -21,7 +43,7 @@ def _run_baseline_reduction_from_pipeline(
     width: int,
 ):
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256)
+        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR)
         .baseline_correction(method=method, width=width)
         .start()
     )
@@ -50,20 +72,9 @@ class TestBaseline:
         """Benchmark batch baseline correction via dm_process."""
         logger.info(f"Benchmarking batch baseline correction method={method}")
 
-        batch_kwargs = {
-            "method": method,
-            "width": 5,
-            "smooth": "none",
-        }
-
         benchmark.pedantic(
-            dm_process,
-            args=(
-                ms_raw_data,
-                256,
-                BatchPreprocess.baseline_correction_batch,
-                batch_kwargs,
-            ),
+            _run_baseline_reduction_from_dm_process,
+            args=(ms_raw_data, method, 5),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

@@ -11,8 +11,29 @@ logger = get_logger("massflow.test.test_noise_reduction")
 ROUNDS = 5
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+TEMP_DIR = "./temp"
+
+
+def _run_noise_reduction_from_dm_process(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+    window: int,
+):
+    batch_kwargs = {
+        "method": method,
+        "window": window,
+    }
+
+    processed_manager = dm_process(
+        ms_raw_data,
+        256,
+        BatchPreprocess.noise_reduction_batch,
+        batch_kwargs,
+        TEMP_DIR,
+    )
+    processed_manager.close()
 
 def _run_noise_reduction_flat_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
@@ -20,7 +41,7 @@ def _run_noise_reduction_flat_from_pipeline(
     window: int,
 ):
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256)
+        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR)
         .noise_reduction(method=method, window=window)
         .start()
     )
@@ -53,20 +74,9 @@ class TestNoiseReductionAPI:
         """Test noise reduction speed for different methods."""
         logger.info(f"Benchmarking noise reduction method={method}")
 
-        batch_kwargs = {
-            "method": method,
-            "window": 5,
-
-        }
-
         benchmark.pedantic(
-            dm_process,
-            args=(
-                ms_raw_data,
-                256,
-                BatchPreprocess.noise_reduction_batch,
-                batch_kwargs
-            ),
+            _run_noise_reduction_from_dm_process,
+            args=(ms_raw_data, method, 5),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

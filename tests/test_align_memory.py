@@ -12,8 +12,9 @@ logger = get_logger("test_align")
 
 ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
-FILE_MIN = '/Users/dre/Desktop/data/200TopL, 170TopR, 190BottomL, 180BottomR-profile/200TopL, 170TopR, 190BottomL, 180BottomR-profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/80TopL, 50TopR, 70BottomL, 60BottomR-profile/80TopL, 50TopR, 70BottomL, 60BottomR-profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/test_data_centroid/file_min_centroid/file_min_centroid.imzML'
+FILE_MAX = '/Users/dre/Desktop/data/test_data_centroid/file_max_centroid/file_max_centroid.imzML'
+TEMP_DIR = "./temp"
 
 def _run_peak_align_from_dm_process(
     ms_raw_data: MSDataManagerImzML,
@@ -28,20 +29,21 @@ def _run_peak_align_from_dm_process(
         "units": units,
     }
 
-    dm_process(
+    processed_manager = dm_process(
         ms_raw_data,
         batch_size,
         BatchPreprocess.peak_align_batch,
         batch_kwargs=batch_kwargs,
-        temp_dir="./temp",
+        temp_dir=TEMP_DIR,
     )
+    processed_manager.close()
 
 def _run_peak_align_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
     units: str,
 ):
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256)
+        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR)
         .peak_align(units=units)
         .start()
     )
