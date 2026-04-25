@@ -5,6 +5,7 @@ import pytest
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.preprocessor import Preprocessor
+from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.tools.dm_process import dm_process
 from massflow.tools.logger import get_logger
 
@@ -13,8 +14,10 @@ logger = get_logger("test_normalization")
 ROUNDS = 5
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+CARDINAL_NORM_METHODS = ["tic", "rms"]
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FILE_MMAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 TEMP_DIR = "./temp"
 
 def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, float]:
@@ -77,6 +80,17 @@ def _run_normalization_from_pipeline(
     processed_manager.close()
 
 
+def _run_normalization_from_cardinal(
+    ms_raw_data: MSDataManagerImzML,
+    method: str,
+):
+    _ = CardinalAdapter.normalization(
+        ms_raw_data,
+        method=method,
+        temp_dir=TEMP_DIR,
+    )
+
+
 class TestNormalization:
     """
     Normalization benchmark tests.
@@ -84,7 +98,7 @@ class TestNormalization:
             uv run pytest ./tests/test_normalization_memory.py -k "test_normalization_memory or test_normalization_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_MMAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for normalization benchmarks."""
         data_file_path = request.param
@@ -120,6 +134,20 @@ class TestNormalization:
         benchmark.pedantic(
             _run_normalization_from_pipeline,
             args=(ms_raw_data, method, None, 0.1, mz_flat, ref),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    @pytest.mark.parametrize("method", CARDINAL_NORM_METHODS)
+    def test_normalization_cardinal_memory(self, benchmark, method, ms_raw_data):
+        """Benchmark Cardinal normalization via Cardinal::normalize."""
+        logger.info(f"Benchmarking Cardinal normalization method={method}")
+
+        benchmark.pedantic(
+            _run_normalization_from_cardinal,
+            args=(ms_raw_data, method),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

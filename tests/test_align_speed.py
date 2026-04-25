@@ -6,6 +6,8 @@ from massflow.preprocess.helper.peak_align_helper import reference_computer
 from massflow.preprocess.helper.peak_align_helper_v1 import compute_reference
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
+from massflow.preprocess.preprocessor import Preprocessor
+from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.tools.dm_process import speed_process
 from massflow.tools.logger import get_logger
 
@@ -13,8 +15,9 @@ logger = get_logger("test_align")
 
 ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_centroid/file_min_centroid/file_min_centroid.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/test_data_centroid/file_max_centroid/file_max_centroid.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FILE_MMAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 
 
 def _run_peak_align_from_dm_process(
@@ -53,6 +56,12 @@ def _peak_align_flat_from_flat_batches(
             units=units,
         )
 
+def _peak_align_from_cardinal(
+    dm: MSDataManagerImzML,
+):
+    _ = CardinalAdapter.peak_align(
+        dm
+    )
 
 class TestAlign:
     """
@@ -61,22 +70,23 @@ class TestAlign:
             uv run pytest ./tests/test_align_speed.py -k "test_align_speed or test_align_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_MMAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for align benchmarks."""
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
         dm.load_head_data()
-        for _ in dm.batch_generator(batch_size=512):
+        picked_dm = Preprocessor(dm).peak_pick().start()
+        for _ in picked_dm.batch_generator(batch_size=512):
             pass
-        return dm
+        return picked_dm
 
     @pytest.fixture(scope="module")
     def flat_caches(self, ms_raw_data: MSDataManagerImzML):
         """Fixture providing pre-generated flat arrays and reference axis for align benchmarks."""
         caches = []
         for mz_data, intensity_flat, lengths, _ in ms_raw_data.flat_generator(
-            batch_size=4096,
+            batch_size=256,
             include_mz=True,
             max_threads=16,
         ):
@@ -103,7 +113,7 @@ class TestAlign:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
-    def test_align_flat_speed(self, benchmark, ms_raw_data, flat_caches, units):
+    def test_align_flat_speed(self, benchmark, flat_caches, units):
         """Benchmark flat peak align via peak_align_flat."""
 
         flat_batches = flat_caches
@@ -111,6 +121,18 @@ class TestAlign:
         benchmark.pedantic(
             _peak_align_flat_from_flat_batches,
             args=(flat_batches, units),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    def test_align_cardinal_speed(self, benchmark, ms_raw_data):
+        """Benchmark flat peak align via peak_align_flat."""
+
+        benchmark.pedantic(
+            _peak_align_from_cardinal,
+            args=(ms_raw_data,),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

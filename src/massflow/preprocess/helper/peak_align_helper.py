@@ -421,14 +421,14 @@ def peak_aligner(
     reference: NDArray[np.float64],
     tolerance: float,
     units: str = "ppm",
-) -> NDArray[np.float64]:
+) -> NDArray[np.float32]:
     """Align a flat batch of spectra to a reference m/z axis."""
     norm_units = _normalize_units(units)
     tol_method = "x" if norm_units == "relative" else "abs"
     code = get_method_code(tol_method)
 
     mz_arr = np.asarray(mz_data, dtype=np.float64)
-    intensity_arr = np.asarray(intensity, dtype=np.float64)
+    intensity_arr = np.asarray(intensity, dtype=np.float32)
     lengths_arr = np.asarray(lengths, dtype=np.int32)
     reference_arr = np.asarray(reference, dtype=np.float64)
 

@@ -4,6 +4,7 @@ import pytest
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.preprocessor import Preprocessor
+from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.tools.dm_process import dm_process
 from massflow.tools.logger import get_logger
 
@@ -11,9 +12,10 @@ logger = get_logger("test_pick")
 
 ROUNDS = 5
 BATCH_PICK_METHODS = ["origin"]
-FLAT_PICK_METHODS = ["quantile", "diff"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FILE_MMAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 TEMP_DIR = "./temp"
 
 
@@ -43,6 +45,20 @@ def _run_peak_pick_from_dm_process(
     )
     processed_manager.close()
 
+def _peak_pick_from_cardinal(
+    dm: MSDataManagerImzML,
+    method: str,
+    width: int,
+    snr: float,
+    return_type: str,
+):
+    _ = CardinalAdapter.peak_pick(
+        dm,
+        width=width,
+        method=method,
+        snr=snr,
+        return_type=return_type
+    )
 
 def _run_peak_pick_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
@@ -72,7 +88,7 @@ class TestPick:
             uv run pytest ./tests/test_pick_memory.py -k "test_pick_memory or test_pick_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_MMAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for pick benchmarks."""
         data_file_path = request.param
@@ -109,6 +125,34 @@ class TestPick:
 
         benchmark.pedantic(
             _run_peak_pick_from_pipeline,
+            args=(
+                ms_raw_data,
+                flat_kwargs["method"],
+                flat_kwargs["width"],
+                flat_kwargs["snr"],
+                flat_kwargs["return_type"],
+            ),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
+
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    @pytest.mark.parametrize("method", FLAT_PICK_METHODS)
+    def test_pick_cardinal_memory(self, benchmark, method, ms_raw_data):
+        """Benchmark Cardinal peak pick via Cardinal::peakPick."""
+        logger.info(f"Benchmarking Cardinal peak pick method={method}")
+
+        flat_kwargs = {
+            "method": method,
+            "width": 5,
+            "snr": 2.0,
+            "return_type": "height",
+        }
+
+        benchmark.pedantic(
+            _peak_pick_from_cardinal,
             args=(
                 ms_raw_data,
                 flat_kwargs["method"],

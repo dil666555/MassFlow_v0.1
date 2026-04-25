@@ -3,6 +3,7 @@ import pytest
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
+from massflow.r_preprocess.adapter import CardinalAdapter
 from massflow.tools.dm_process import speed_process
 from massflow.tools.logger import get_logger
 
@@ -11,8 +12,10 @@ logger = get_logger("massflow.test.test_noise_reduction")
 ROUNDS = 5
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+CARDINAL_NR_METHODS = ["ma", "gaussian", "savgol"]
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FILE_MMAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 
 def _noise_reduction_flat_from_flat_batches(
     flat_batches,
@@ -29,6 +32,18 @@ def _noise_reduction_flat_from_flat_batches(
         )
 
 
+def _noise_reduction_from_cardinal(
+    dm: MSDataManagerImzML,
+    method: str,
+    window: int,
+):
+    _ = CardinalAdapter.noise_reduction(
+        dm,
+        method=method,
+        window=window,
+    )
+
+
 class TestNoiseReductionAPI:
     """
     Test suite for noise reduction API functionality and performance.
@@ -36,7 +51,7 @@ class TestNoiseReductionAPI:
         uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_MMAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
         data_file_path = request.param
@@ -46,14 +61,11 @@ class TestNoiseReductionAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MAX])
-    def flat_caches(self, request):
-        data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
+    @pytest.fixture(scope="module")
+    def flat_caches(self, ms_raw_data):
 
         caches = []
-        for _, intensity_flat, lengths, _ in dm.flat_generator(batch_size=4096, include_mz=False, max_threads=16):
+        for _, intensity_flat, lengths, _ in ms_raw_data.flat_generator(batch_size=4096, include_mz=False, max_threads=16):
             caches.append((intensity_flat, lengths))
 
         return caches
@@ -98,6 +110,20 @@ class TestNoiseReductionAPI:
         benchmark.pedantic(
             _noise_reduction_flat_from_flat_batches,
             args=(flat_caches, flat_kwargs["method"], flat_kwargs["window"]),
+            rounds=ROUNDS,
+            iterations=1,
+            warmup_rounds=1,
+        )
+
+    @pytest.mark.benchmark(timer=time.perf_counter)
+    @pytest.mark.parametrize("method", CARDINAL_NR_METHODS)
+    def test_nr_cardinal_speed(self, benchmark, method, ms_raw_data):
+        """Test Cardinal noise reduction speed using Cardinal::smooth."""
+        logger.info(f"Benchmarking Cardinal noise reduction method={method}")
+
+        benchmark.pedantic(
+            _noise_reduction_from_cardinal,
+            args=(ms_raw_data, method, 5),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
