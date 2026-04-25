@@ -123,10 +123,22 @@ def find_pick_scipy(
                               height=[relheight,max_height],
                               prominence=prominence)
 
-    #noise est
-    noise_estimation = estimator(intensity,index,denoise_method=noise)
+    if peaks.size == 0:
+        return peaks, props
 
-    snr_selection = (intensity[peaks] / noise_estimation) > snr
+    #noise est
+    noise_estimation = np.asarray(estimator(intensity, index, denoise_method=noise))
+    if noise_estimation.ndim == 0:
+        peak_noise = np.full(peaks.shape, float(noise_estimation), dtype=np.float64)
+    elif noise_estimation.shape == intensity.shape:
+        peak_noise = noise_estimation[peaks]
+    else:
+        raise ValueError("Noise estimator output must be scalar or match intensity shape.")
+
+    valid_noise = np.isfinite(peak_noise) & (peak_noise > 0)
+    snr_values = np.zeros(peaks.shape, dtype=np.float64)
+    snr_values[valid_noise] = intensity[peaks][valid_noise] / peak_noise[valid_noise]
+    snr_selection = valid_noise & (snr_values > snr)
     peaks = peaks[snr_selection]
     props = _mask_peak_props(props, snr_selection)
 

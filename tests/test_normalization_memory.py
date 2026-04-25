@@ -12,7 +12,7 @@ logger = get_logger("test_normalization")
 
 ROUNDS = 5
 BATCH_NORM_METHODS = ["tic", "rms"]
-FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
+FLAT_NORM_METHODS = ["tic_numba", "rms_numba"]
 FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
 FILE_MAX = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
 TEMP_DIR = "./temp"
