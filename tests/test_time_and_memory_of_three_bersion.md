@@ -13,9 +13,31 @@ pytest tests/test_baseline_memory.py::TestBaseline::test_baseline_cardinal_memor
 
 ![image-20260425142413333](/Users/dre/Library/Application Support/typora-user-images/image-20260425142413333.png)
 
+| Item(time in s) | Mean    |
+| --------------- | ------- |
+| Min-locmin      | 1.1338  |
+| Min-snip        | 1.7248  |
+| Max-locmin      | 6.4109  |
+| Max-snip        | 10.5654 |
+
 ![image-20260425142443822](/Users/dre/Library/Application Support/typora-user-images/image-20260425142443822.png)
 
+| Item(time in ms) | Mean      |
+| ---------------- | --------- |
+| Min-locmin       | 131.9464  |
+| Min-snip         | 217.5176  |
+| Max-locmin       | 677.4269  |
+| Max-snip         | 1085.6661 |
+
 ![image-20260425163053192](/Users/dre/Library/Application Support/typora-user-images/image-20260425163053192.png)
+
+![image-20260427144226244](/Users/dre/Library/Application Support/typora-user-images/image-20260427144226244.png)
+
+![image-20260427144153013](/Users/dre/Library/Application Support/typora-user-images/image-20260427144153013.png)
+
+![image-20260427161641070](/Users/dre/Library/Application Support/typora-user-images/image-20260427161641070.png)
+
+![image-20260427154351436](/Users/dre/Library/Application Support/typora-user-images/image-20260427154351436.png)
 
 ### memory
 
