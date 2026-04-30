@@ -5,9 +5,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.pipeline_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA, MEMORY_DATA
 
-OUTPUT_DIR = './images/peak_picking'
+OUTPUT_DIR = './images_python/peak_picking'
 
 CARDINAL_COLOR = "#F7BDBC"
 MASSFLOW_COLOR = "#B6E3F8"
@@ -37,9 +37,8 @@ def format_ratio_label(h):
 
 def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_scale=False):
     """Plot grouped bar chart for Peak Picking stage (4 methods, 2×2 layout)."""
-    scales = ['min', 'mid', 'max', 'ultra']
-    scale_display = ['Min', 'Mid', 'Max', 'Ultra']
-    n = len(METHODS)
+    scales = ['min', 'mid', 'max']
+    scale_display = ['Min', 'Mid', 'Max']
     nrows, ncols = 2, 2
     x = np.arange(len(scales))
     width = 0.35
@@ -71,10 +70,10 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
         massflow_ratios = [1.0] * len(scales)
 
         bars_m = ax.bar(x - width / 2, massflow_ratios, width,
-                        color=MASSFLOW_COLOR, label='MassFlow',
+                        color=MASSFLOW_COLOR, label='Flat',
                         edgecolor='white', linewidth=0.6)
         bars_c = ax.bar(x + width / 2, cardinal_ratios, width,
-                        color=CARDINAL_COLOR, label='Cardinal',
+                        color=CARDINAL_COLOR, label='Batch',
                         edgecolor='white', linewidth=0.6)
 
         label_off = 1.08 if use_log_scale else global_max * 0.02
@@ -124,7 +123,7 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
 
 def plot_all_peak_picking(output_dir=OUTPUT_DIR):
     plot_peak_picking(TIME_DATA['Peak Picking'], 'Time', 'peak_picking_time', output_dir, use_log_scale=False)
-    plot_peak_picking(MEMORY_DATA['Peak Picking'], 'Memory', 'peak_picking_memory', output_dir, use_log_scale=False)
+    plot_peak_picking(MEMORY_DATA['Peak Picking'], 'Memory', 'peak_picking_memory', output_dir)
 
 
 if __name__ == '__main__':

@@ -5,14 +5,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.pipeline_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA, MEMORY_DATA
 
-OUTPUT_DIR = './images/peak_picking'
+OUTPUT_DIR = './images_python/noise_reduction'
 
 CARDINAL_COLOR = "#F7BDBC"
 MASSFLOW_COLOR = "#B6E3F8"
 
-METHODS = ['Quantile', 'Diff', 'SD', 'MAD']
+METHODS = ['MA', 'Gaussian', 'Savitzky–Golay']
 
 
 def _ratio(c, m):
@@ -35,12 +35,11 @@ def format_ratio_label(h):
         return f'{h:.1f}x'
 
 
-def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_scale=False):
-    """Plot grouped bar chart for Peak Picking stage (4 methods, 2×2 layout)."""
-    scales = ['min', 'mid', 'max', 'ultra']
-    scale_display = ['Min', 'Mid', 'Max', 'Ultra']
+def plot_noise_reduction(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_scale=False):
+    """Plot grouped bar chart for Noise Reduction stage (3 methods)."""
+    scales = ['min', 'mid', 'max']
+    scale_display = ['Min', 'Mid', 'Max']
     n = len(METHODS)
-    nrows, ncols = 2, 2
     x = np.arange(len(scales))
     width = 0.35
 
@@ -54,7 +53,7 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
             all_ratios.append(_ratio(c_val, m_val))
     global_max = max(all_ratios) if all_ratios else 2
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=(10, 10), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(15, 5), sharey=True, squeeze=False)
 
     if use_log_scale:
         axes.flat[0].set_yscale('log')
@@ -71,10 +70,10 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
         massflow_ratios = [1.0] * len(scales)
 
         bars_m = ax.bar(x - width / 2, massflow_ratios, width,
-                        color=MASSFLOW_COLOR, label='MassFlow',
+                        color=MASSFLOW_COLOR, label='Flat',
                         edgecolor='white', linewidth=0.6)
         bars_c = ax.bar(x + width / 2, cardinal_ratios, width,
-                        color=CARDINAL_COLOR, label='Cardinal',
+                        color=CARDINAL_COLOR, label='Batch',
                         edgecolor='white', linewidth=0.6)
 
         label_off = 1.08 if use_log_scale else global_max * 0.02
@@ -103,11 +102,11 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
         ax.spines['right'].set_visible(False)
 
     handles, labels = axes.flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.90),
+    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.88),
                ncol=2, frameon=False, fontsize=11)
 
-    fig.suptitle(f'{data_label} — Peak Picking', fontweight='bold', fontsize=15, y=0.96)
-    plt.tight_layout(rect=(0, 0, 1, 0.85))
+    fig.suptitle(f'{data_label} — Noise Reduction', fontweight='bold', fontsize=15, y=0.98)
+    plt.tight_layout(rect=(0, 0, 1, 0.82))
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -122,10 +121,10 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
     plt.close(fig)
 
 
-def plot_all_peak_picking(output_dir=OUTPUT_DIR):
-    plot_peak_picking(TIME_DATA['Peak Picking'], 'Time', 'peak_picking_time', output_dir, use_log_scale=False)
-    plot_peak_picking(MEMORY_DATA['Peak Picking'], 'Memory', 'peak_picking_memory', output_dir, use_log_scale=False)
+def plot_all_noise_reduction(output_dir=OUTPUT_DIR):
+    plot_noise_reduction(TIME_DATA['Noise Reduction'], 'Time', 'noise_reduction_time', output_dir, use_log_scale=False)
+    plot_noise_reduction(MEMORY_DATA['Noise Reduction'], 'Memory', 'noise_reduction_memory', output_dir)
 
 
 if __name__ == '__main__':
-    plot_all_peak_picking()
+    plot_all_noise_reduction()

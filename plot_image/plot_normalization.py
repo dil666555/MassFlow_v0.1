@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.ticker as ticker
 from tests.pipeline_outcome import TIME_DATA, MEMORY_DATA
 
 OUTPUT_DIR = './images/normalization'
@@ -20,7 +21,21 @@ def _ratio(c, m):
     return c / m
 
 
-def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
+def format_ratio_label(h):
+    if abs(h - 1.0) < 1e-5:
+        return '1.0x'
+
+    elif 0.95 <= h < 1.05:
+        label = f'{h:.2f}x'
+        if label == '1.00x':
+            return '1.0x'
+        return label
+
+    else:
+        return f'{h:.1f}x'
+
+
+def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_scale=False):
     """Plot grouped bar chart for Normalization stage (3 methods)."""
     scales = ['min', 'mid', 'max', 'ultra']
     scale_display = ['Min', 'Mid', 'Max', 'Ultra']
@@ -28,7 +43,7 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
     x = np.arange(len(scales))
     width = 0.35
 
-    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.family'] = 'Arial'
     plt.rcParams['font.size'] = 12
 
     all_ratios = []
@@ -39,6 +54,13 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
     global_max = max(all_ratios) if all_ratios else 2
 
     fig, axes = plt.subplots(1, n, figsize=(15, 5), sharey=True, squeeze=False)
+
+    if use_log_scale:
+        axes.flat[0].set_yscale('log')
+        axes.flat[0].set_ylim(0.5, global_max * 3.0)
+        axes.flat[0].yaxis.set_minor_locator(ticker.NullLocator())
+    else:
+        axes.flat[0].set_ylim(0, global_max * 1.15)
 
     for idx, method in enumerate(METHODS):
         ax = axes.flat[idx]
@@ -54,15 +76,17 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
                         color=CARDINAL_COLOR, label='Cardinal',
                         edgecolor='white', linewidth=0.6)
 
-        offset = global_max * 0.02
+        label_off = 1.08 if use_log_scale else global_max * 0.02
         for bar in bars_m:
             h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h + offset,
-                    f'{h:.1f}x', ha='center', va='bottom', fontsize=9)
+            y = h * label_off if use_log_scale else h + label_off
+            ax.text(bar.get_x() + bar.get_width() / 2, y,
+                    format_ratio_label(h), ha='center', va='bottom', fontsize=9)
         for bar in bars_c:
             h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h + offset,
-                    f'{h:.1f}x', ha='center', va='bottom', fontsize=9)
+            y = h * label_off if use_log_scale else h + label_off
+            ax.text(bar.get_x() + bar.get_width() / 2, y,
+                    format_ratio_label(h), ha='center', va='bottom', fontsize=9)
 
         ax.set_xticks(x)
         ax.set_xticklabels(scale_display)
@@ -71,10 +95,11 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
         if idx == 0:
             ax.set_ylabel(f'{data_label} — Relative Ratio')
 
+        if use_log_scale:
+            ax.yaxis.set_minor_locator(ticker.NullLocator())
+
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-
-    axes.flat[0].set_ylim(0, global_max * 1.15)
 
     handles, labels = axes.flat[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.88),
@@ -97,7 +122,7 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR):
 
 
 def plot_all_normalization(output_dir=OUTPUT_DIR):
-    plot_normalization(TIME_DATA['Normalization'], 'Time', 'normalization_time', output_dir)
+    plot_normalization(TIME_DATA['Normalization'], 'Time', 'normalization_time', output_dir, use_log_scale=True)
     plot_normalization(MEMORY_DATA['Normalization'], 'Memory', 'normalization_memory', output_dir)
 
 
