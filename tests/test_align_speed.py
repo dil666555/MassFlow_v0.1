@@ -92,6 +92,8 @@ class TestAlign:
         ):
             caches.append((mz_data, intensity_flat, lengths))
 
+        picked_dm.close()
+        dm.close()
         return caches
 
     @pytest.mark.benchmark(timer=time.perf_counter)

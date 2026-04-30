@@ -231,6 +231,9 @@ class FlatPreprocess:
         if method_norm not in supported_methods:
             raise ValueError("normalization_flat only supports: tic_numba, rms_numba, ref_numba")
 
+        if method_norm == "ref_numba" and mz_flat is None:
+            mz_flat = mz_data
+
         normalized_intensity = normalizer(
             intensity=intensity,
             method=method_norm,

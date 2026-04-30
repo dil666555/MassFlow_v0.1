@@ -152,9 +152,10 @@ class MSDataManagerImzML(MSDataManager):
         """
         Safely close underlying resources associated with the ImzML parser.
         """
-        if self.parser is not None:
+        parser = getattr(self, "_parser", None)
+        if parser is not None:
             # Try closing memory-mapped handle if present
-            m = getattr(self.parser, "m", None)
+            m = getattr(parser, "m", None)
             if m is not None and hasattr(m, "close"):
                 m.close()
 

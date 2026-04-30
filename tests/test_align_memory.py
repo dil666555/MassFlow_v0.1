@@ -13,9 +13,10 @@ logger = get_logger("test_align")
 
 ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 
 def _run_peak_align_from_dm_process(
     ms_raw_data: MSDataManagerImzML,
@@ -62,7 +63,7 @@ class TestAlign:
             uv run pytest ./tests/test_align_memory.py -k "test_align_memory or test_align_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for align benchmarks."""
         data_file_path = request.param
@@ -72,17 +73,11 @@ class TestAlign:
         picked_dm.load_head_data()
         return picked_dm
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
-    def flat_caches(self, request):
+    @pytest.fixture(scope="module")
+    def flat_caches(self, ms_raw_data):
         """Fixture providing pre-generated flat arrays for align memory benchmarks."""
-        data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
-        picked_dm = Preprocessor(dm).peak_pick().start()
-        picked_dm.load_head_data()
-
         caches = []
-        for mz_data, intensity_flat, lengths, _ in picked_dm.flat_generator(
+        for mz_data, intensity_flat, lengths, _ in ms_raw_data.flat_generator(
             batch_size=256,
             include_mz=True,
             max_threads=16,
