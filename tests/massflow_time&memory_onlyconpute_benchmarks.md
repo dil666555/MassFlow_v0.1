@@ -141,7 +141,7 @@ pytest tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_flat
 
 ![image-20260428155010659](https://neonexus-picture.oss-ap-southeast-1.aliyuncs.com/test/image-20260428155010659.png)
 
-![image-20260428155030353](/Users/dre/Library/Application Support/typora-user-images/image-20260428155030353.png)
+![image-20260428155030353](https://neonexus-picture.oss-ap-southeast-1.aliyuncs.com/test/image-20260428155030353.png)
 
 ## Normalization
 
