@@ -1,10 +1,3 @@
-OUTPUT_DIR = '/Users/dre/Desktop/dre/massflow/MassFlow/tests/'
-
-# ============================================================
-# Time data — mean elapsed seconds
-#   cardinal_time&memory_benchmarks.md  (Cardinal, R)
-#   massflow_time&memory_benchmarks.md  (MassFlow-flat, Python)
-# ============================================================
 TIME_DATA = {
     'Baseline Correction': {
         'locmin': {
@@ -95,13 +88,6 @@ TIME_DATA = {
         },
     },
 }
-
-# ============================================================
-# Memory data
-#   Cardinal: Peak_RAM_Used_MiB column (reported in bytes
-#             despite the column name — converted to MiB here).
-#   MassFlow: total memory allocated (MiB) from memray.
-# ============================================================
 
 def _card_b_to_mib(v):
     """Cardinal peakRAM reports bytes in a column labelled MiB; convert."""
