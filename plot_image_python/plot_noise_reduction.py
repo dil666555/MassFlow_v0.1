@@ -122,7 +122,7 @@ def plot_noise_reduction(data, data_label, save_name, output_dir=OUTPUT_DIR, use
 
 
 def plot_all_noise_reduction(output_dir=OUTPUT_DIR):
-    plot_noise_reduction(TIME_DATA['Noise Reduction'], 'Time', 'noise_reduction_time', output_dir, use_log_scale=False)
+    plot_noise_reduction(TIME_DATA['Noise Reduction'], 'Time', 'noise_reduction_time', output_dir, use_log_scale=True)
     plot_noise_reduction(MEMORY_DATA['Noise Reduction'], 'Memory', 'noise_reduction_memory', output_dir)
 
 

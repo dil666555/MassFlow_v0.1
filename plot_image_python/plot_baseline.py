@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.ticker as ticker
 from tests.python_outcome import TIME_DATA, MEMORY_DATA
 
-OUTPUT_DIR = './images_python/baseline/pipeline_comparison'
+OUTPUT_DIR = './images_python/baseline/'
 
 CARDINAL_COLOR = "#F7BDBC"
 MASSFLOW_COLOR = "#B6E3F8"

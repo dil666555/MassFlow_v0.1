@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker  # 新增：用于控制刻度
 
-OUTPUT_DIR = './images/baseline/pipeline_comparison'
+OUTPUT_DIR = './images/baseline'
 
 def cal_time_or_mem_ratio(val_1, val_2):
     """Calculate the ratio of Cardinal to MassFlow values."""

@@ -122,7 +122,7 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR, use_l
 
 
 def plot_all_normalization(output_dir=OUTPUT_DIR):
-    plot_normalization(TIME_DATA['Normalization'], 'Time', 'normalization_time', output_dir, use_log_scale=False)
+    plot_normalization(TIME_DATA['Normalization'], 'Time', 'normalization_time', output_dir, use_log_scale=True)
     plot_normalization(MEMORY_DATA['Normalization'], 'Memory', 'normalization_memory', output_dir)
 
 

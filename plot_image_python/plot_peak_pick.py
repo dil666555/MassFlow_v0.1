@@ -122,7 +122,7 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
 
 
 def plot_all_peak_picking(output_dir=OUTPUT_DIR):
-    plot_peak_picking(TIME_DATA['Peak Picking'], 'Time', 'peak_picking_time', output_dir, use_log_scale=False)
+    plot_peak_picking(TIME_DATA['Peak Picking'], 'Time', 'peak_picking_time', output_dir, use_log_scale=True)
     plot_peak_picking(MEMORY_DATA['Peak Picking'], 'Memory', 'peak_picking_memory', output_dir)
 
 
