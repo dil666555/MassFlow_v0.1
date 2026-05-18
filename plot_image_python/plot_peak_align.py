@@ -14,6 +14,10 @@ MASSFLOW_COLOR = "#B6E3F8"
 
 METHODS = ['PPM']
 
+GROUP_STEP = 0.65
+BAR_WIDTH = 0.22
+BAR_LABEL_SIZE = 11
+
 
 def _ratio(c, m):
     if m == 0:
@@ -40,8 +44,8 @@ def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_
     scales = ['min', 'mid', 'max']
     scale_display = ['Min', 'Mid', 'Max']
     n = len(METHODS)
-    x = np.arange(len(scales))
-    width = 0.35
+    x = np.arange(len(scales)) * GROUP_STEP
+    width = BAR_WIDTH
 
     plt.rcParams['font.family'] = 'Arial'
     plt.rcParams['font.size'] = 12
@@ -53,7 +57,7 @@ def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_
             all_ratios.append(_ratio(c_val, m_val))
     global_max = max(all_ratios) if all_ratios else 2
 
-    fig, axes = plt.subplots(1, n, figsize=(6, 5), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(5, 5), sharey=True, squeeze=False)
 
     if use_log_scale:
         axes.flat[0].set_yscale('log')
@@ -81,12 +85,12 @@ def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_
             h = bar.get_height()
             y = h * label_off if use_log_scale else h + label_off
             ax.text(bar.get_x() + bar.get_width() / 2, y,
-                    format_ratio_label(h), ha='center', va='bottom', fontsize=9)
+                    format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
         for bar in bars_c:
             h = bar.get_height()
             y = h * label_off if use_log_scale else h + label_off
             ax.text(bar.get_x() + bar.get_width() / 2, y,
-                    format_ratio_label(h), ha='center', va='bottom', fontsize=9)
+                    format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
 
         ax.set_xticks(x)
         ax.set_xticklabels(scale_display)
