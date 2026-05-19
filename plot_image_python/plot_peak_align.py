@@ -41,13 +41,13 @@ def format_ratio_label(h):
 
 
 def plot_peak_alignment(
-        data,
-        data_label,
-        save_name,
-        output_dir=OUTPUT_DIR,
-        use_log_scale=False,
-        no_label=False
-        ):
+    data,
+    data_label,
+    save_name,
+    output_dir=OUTPUT_DIR,
+    use_log_scale=False,
+    no_label=False
+):
     """Plot grouped bar chart for Peak Alignment stage (1 method)."""
     scales = ['min', 'mid', 'max']
     scale_display = ['Min', 'Mid', 'Max']
@@ -65,7 +65,7 @@ def plot_peak_alignment(
             all_ratios.append(_ratio(c_val, m_val))
     global_max = max(all_ratios) if all_ratios else 2
 
-    fig, axes = plt.subplots(1, n, figsize=(2.6, 5), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=FIGSIZE, sharey=True, squeeze=False)
 
     if use_log_scale:
         axes.flat[0].set_yscale('log')
@@ -88,22 +88,27 @@ def plot_peak_alignment(
                         color=CARDINAL_COLOR, label='Batch',
                         edgecolor='white', linewidth=0.6)
 
-        label_off = 1.08 if use_log_scale else global_max * 0.02
-        for bar in bars_m:
-            h = bar.get_height()
-            y = h * label_off if use_log_scale else h + label_off
-            ax.text(bar.get_x() + bar.get_width() / 2, y,
-                    format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
-        for bar in bars_c:
-            h = bar.get_height()
-            y = h * label_off if use_log_scale else h + label_off
-            ax.text(bar.get_x() + bar.get_width() / 2, y,
-                    format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
+        if not no_label:
+            label_off = 1.08 if use_log_scale else global_max * 0.02
+            for bar in bars_m:
+                h = bar.get_height()
+                y = h * label_off if use_log_scale else h + label_off
+                ax.text(bar.get_x() + bar.get_width() / 2, y,
+                        format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
+            for bar in bars_c:
+                h = bar.get_height()
+                y = h * label_off if use_log_scale else h + label_off
+                ax.text(bar.get_x() + bar.get_width() / 2, y,
+                        format_ratio_label(h), ha='center', va='bottom', fontsize=BAR_LABEL_SIZE)
 
         ax.set_xticks(x)
-        ax.set_xticklabels(scale_display)
-        ax.set_title(method, fontweight='bold', fontsize=13)
-        ax.set_ylabel(f'{data_label} — Relative Ratio')
+        if no_label:
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+        else:
+            ax.set_xticklabels(scale_display)
+            ax.set_title(method, fontweight='bold', fontsize=13)
+            ax.set_ylabel(f'{data_label} — Relative Ratio')
 
         if use_log_scale:
             ax.yaxis.set_minor_locator(ticker.NullLocator())
@@ -111,12 +116,15 @@ def plot_peak_alignment(
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-    handles, labels = axes.flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.88),
-               ncol=2, frameon=False, fontsize=11)
+    if not no_label:
+        handles, labels = axes.flat[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.88),
+                   ncol=2, frameon=False, fontsize=11)
 
-    fig.suptitle(f'{data_label} — Peak Alignment (PPM)', fontweight='bold', fontsize=15, y=0.98)
-    plt.tight_layout(rect=(0, 0, 1, 0.82))
+        fig.suptitle(f'{data_label} — Peak Alignment (PPM)', fontweight='bold', fontsize=15, y=0.98)
+        plt.tight_layout(rect=(0, 0, 1, 0.82))
+    else:
+        plt.tight_layout()
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -133,6 +141,7 @@ def plot_peak_alignment(
 
 def plot_all_peak_alignment(output_dir=OUTPUT_DIR):
     plot_peak_alignment(TIME_DATA['Peak Alignment'], 'Time', 'peak_alignment_time', output_dir, use_log_scale=False)
+    plot_peak_alignment(TIME_DATA['Peak Alignment'], 'Time', 'peak_alignment_time_no_label', output_dir, use_log_scale=True, no_label=True)
 
 
 if __name__ == '__main__':
