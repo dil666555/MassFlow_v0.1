@@ -17,6 +17,7 @@ METHODS = ['PPM']
 GROUP_STEP = 0.55
 BAR_WIDTH = 0.20
 BAR_LABEL_SIZE = 8
+FIGSIZE = (2.6, 5)
 
 
 def _ratio(c, m):
@@ -39,7 +40,14 @@ def format_ratio_label(h):
         return f'{h:.1f}x'
 
 
-def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_scale=False):
+def plot_peak_alignment(
+        data,
+        data_label,
+        save_name,
+        output_dir=OUTPUT_DIR,
+        use_log_scale=False,
+        no_label=False
+        ):
     """Plot grouped bar chart for Peak Alignment stage (1 method)."""
     scales = ['min', 'mid', 'max']
     scale_display = ['Min', 'Mid', 'Max']
