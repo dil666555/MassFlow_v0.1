@@ -14,9 +14,9 @@ MASSFLOW_COLOR = "#B6E3F8"
 
 METHODS = ['PPM']
 
-GROUP_STEP = 0.65
-BAR_WIDTH = 0.22
-BAR_LABEL_SIZE = 11
+GROUP_STEP = 0.55
+BAR_WIDTH = 0.20
+BAR_LABEL_SIZE = 8
 
 
 def _ratio(c, m):
@@ -57,7 +57,7 @@ def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_
             all_ratios.append(_ratio(c_val, m_val))
     global_max = max(all_ratios) if all_ratios else 2
 
-    fig, axes = plt.subplots(1, n, figsize=(5, 5), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(3.0, 5), sharey=True, squeeze=False)
 
     if use_log_scale:
         axes.flat[0].set_yscale('log')

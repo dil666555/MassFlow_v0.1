@@ -14,8 +14,8 @@ MASSFLOW_COLOR = "#B6E3F8"
 
 METHODS = ['Quantile', 'Diff', 'SD', 'MAD']
 
-GROUP_STEP = 0.65
-BAR_WIDTH = 0.22
+GROUP_STEP = 0.75
+BAR_WIDTH = 0.30
 BAR_LABEL_SIZE = 11
 
 
@@ -58,7 +58,7 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
             all_ratios.append(_ratio(c_val, m_val))
     global_max = max(all_ratios) if all_ratios else 2
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=(8.2, 10), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(7, 10), sharey=True, squeeze=False)
 
     if use_log_scale:
         axes.flat[0].set_yscale('log')
