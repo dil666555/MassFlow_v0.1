@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.python_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA
 
 OUTPUT_DIR = './images_python/baseline/'
 
@@ -128,7 +128,6 @@ def plot_baseline(data, data_label, save_name, output_dir=OUTPUT_DIR, use_log_sc
 def plot_all_baselines(output_dir=OUTPUT_DIR):
     """Generate both time and memory baseline comparison figures."""
     plot_baseline(TIME_DATA['Baseline Correction'], 'Time', 'baseline_time', output_dir, use_log_scale=False)
-    plot_baseline(MEMORY_DATA['Baseline Correction'], 'Memory', 'baseline_memory', output_dir, use_log_scale=False)
 
 
 if __name__ == '__main__':

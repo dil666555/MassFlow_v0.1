@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.python_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA
 
 OUTPUT_DIR = './images_python/normalization'
 
@@ -123,7 +123,6 @@ def plot_normalization(data, data_label, save_name, output_dir=OUTPUT_DIR, use_l
 
 def plot_all_normalization(output_dir=OUTPUT_DIR):
     plot_normalization(TIME_DATA['Normalization'], 'Time', 'normalization_time', output_dir, use_log_scale=True)
-    plot_normalization(MEMORY_DATA['Normalization'], 'Memory', 'normalization_memory', output_dir)
 
 
 if __name__ == '__main__':

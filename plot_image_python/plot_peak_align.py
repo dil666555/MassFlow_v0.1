@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.python_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA
 
 OUTPUT_DIR = './images_python/peak_alignment'
 
@@ -125,7 +125,6 @@ def plot_peak_alignment(data, data_label, save_name, output_dir=OUTPUT_DIR, use_
 
 def plot_all_peak_alignment(output_dir=OUTPUT_DIR):
     plot_peak_alignment(TIME_DATA['Peak Alignment'], 'Time', 'peak_alignment_time', output_dir, use_log_scale=False)
-    plot_peak_alignment(MEMORY_DATA['Peak Alignment'], 'Memory', 'peak_alignment_memory', output_dir)
 
 
 if __name__ == '__main__':

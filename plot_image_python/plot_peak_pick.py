@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as ticker
-from tests.python_outcome import TIME_DATA, MEMORY_DATA
+from tests.python_outcome import TIME_DATA
 
 OUTPUT_DIR = './images_python/peak_picking'
 
@@ -127,8 +127,6 @@ def plot_peak_picking(data, data_label, save_name, output_dir=OUTPUT_DIR, use_lo
 
 def plot_all_peak_picking(output_dir=OUTPUT_DIR):
     plot_peak_picking(TIME_DATA['Peak Picking'], 'Time', 'peak_picking_time', output_dir, use_log_scale=True)
-    plot_peak_picking(MEMORY_DATA['Peak Picking'], 'Memory', 'peak_picking_memory', output_dir)
-
 
 if __name__ == '__main__':
     plot_all_peak_picking()
