@@ -18,7 +18,7 @@ LEGEND_SIZE     = 11
 BAR_LABEL_SIZE  = 6
 BAR_WIDTH       = 0.22
 GROUP_STEP      = 0.58
-FIGSIZE         = (3.0, 5)
+FIGSIZE         = (5, 4)
 DPI             = 300
 OUTPUT_BASE     = "./images"
 # 轴区域位置（两版共用，保证 no_label 是有标签版轴区域的等比放大）
@@ -40,10 +40,7 @@ SCALE_DISPLAY  = ['Min', 'Mid', 'Max', 'Ultra']
 # ── Stage definitions: stage_key → (output_subdir, methods, time_log, mem_log) ──
 STAGES = {
     'Peak Alignment':      ('peak_alignment', ['PPM'],                              False, False),
-    'Peak Picking':        ('peak_picking',   ['Quantile', 'Diff', 'SD', 'MAD'],   False, False),
-    'Baseline Correction': ('baseline',       ['locmin', 'snip'],                   True,  False),
     'Noise Reduction':     ('noise_reduction',['MA', 'Gaussian', 'Savitzky–Golay'],True,  False),
-    'Normalization':       ('normalization',  ['TIC', 'RMS', 'Reference'],          True,  False),
 }
 
 
@@ -156,7 +153,9 @@ def plot_one_ppt(stage_key, method, data_label, data, output_dir, use_log_scale=
     # 纵轴只标整数（log 尺度只显 10 的次幂；线性尺度只显整数）
     if use_log_scale:
         ax.yaxis.set_major_locator(ticker.LogLocator(base=10.0, subs=[1.0]))
-        ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f'{int(v)}'))
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(
+            lambda v, _: '1' if np.isclose(v, 1.0) else rf'$\mathbf{{10^{{{int(round(np.log10(v)))}}}}}$'
+        ))
     else:
         ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
