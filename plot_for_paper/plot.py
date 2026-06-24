@@ -178,9 +178,9 @@ def stats_block(data, stages, datasets, label):
     return rows
 
 
-rb = stats_block(B_TIME, STAGE_ORDER, DS3, "Experiment (b) Numba/Flat speedup over NumPy/Batch")
-ra_t = stats_block(A_TIME, STAGE_ORDER, DS4, "Experiment (a) time speedup MassFlow over Cardinal")
-ra_m = stats_block(A_MEM, STAGE_ORDER, DS4, "Experiment (a) memory ratio Cardinal/MassFlow")
+rb = stats_block(B_TIME, STAGE_ORDER, DS3, "Experiment (a) Numba/Flat speedup over NumPy/Batch")
+ra_t = stats_block(A_TIME, STAGE_ORDER, DS4, "Experiment (b) time speedup MassFlow over Cardinal")
+ra_m = stats_block(A_MEM, STAGE_ORDER, DS4, "Experiment (b) memory ratio Cardinal/MassFlow")
 
 # ---- absolute framework table (MassFlow flat = 2nd element of pipeline data) --
 print("\n===== Table 2: ProjectNAME (flat) absolute time(s) / peak mem(MiB) =====")
