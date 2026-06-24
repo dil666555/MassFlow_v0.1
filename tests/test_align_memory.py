@@ -13,17 +13,19 @@ logger = get_logger("test_align")
 
 ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
-# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-# FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+BINFUN = ["min"]
+FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
+FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _run_peak_align_from_dm_process(
     ms_raw_data: MSDataManagerImzML,
     batch_size: int,
     units: str,
+    binfun: str,
 ):
-    reference, tolerance = compute_reference(ms_raw_data, units=units)
+    reference, tolerance = compute_reference(ms_raw_data, units=units, binfun=binfun)
     tolerance = tolerance * 1e6 if units == "ppm" else tolerance
     batch_kwargs = {
         "reference": reference,
@@ -44,12 +46,13 @@ def _run_peak_align_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
     flat_batches,
     units: str,
+    binfun: str,
 ):
-    reference, tolerance = reference_computer(flat_batches, units=units)
+    reference, tolerance = reference_computer(flat_batches, units=units, binfun=binfun)
     pipeline_tolerance = tolerance * 1e6 if units == "ppm" else tolerance
 
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256, temp_dir="./temp")
+        Preprocessor(ms_raw_data, batch_size=128, temp_dir="./temp")
         .peak_align(reference=reference, tolerance=pipeline_tolerance, units=units)
         .start()
     )
@@ -63,7 +66,7 @@ class TestAlign:
             uv run pytest ./tests/test_align_memory.py -k "test_align_memory or test_align_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX, FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for align benchmarks."""
         data_file_path = request.param
@@ -88,7 +91,8 @@ class TestAlign:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
-    def test_align_memory(self, benchmark, ms_raw_data, units):
+    @pytest.mark.parametrize("binfun", BINFUN)
+    def test_align_memory(self, benchmark, ms_raw_data, units, binfun):
         """Benchmark batch peak align via dm_process."""
 
         benchmark.pedantic(
@@ -97,6 +101,7 @@ class TestAlign:
                 ms_raw_data,
                 256,
                 units,
+                binfun,
             ),
             rounds=ROUNDS,
             iterations=1,
@@ -105,12 +110,13 @@ class TestAlign:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
-    def test_align_flat_memory(self, benchmark, ms_raw_data, flat_caches, units):
+    @pytest.mark.parametrize("binfun", BINFUN)
+    def test_align_flat_memory(self, benchmark, ms_raw_data, flat_caches, units, binfun):
         """Benchmark flat peak align via peak_align pipeline."""
 
         benchmark.pedantic(
             _run_peak_align_from_pipeline,
-            args=(ms_raw_data, flat_caches, units),
+            args=(ms_raw_data, flat_caches, units, binfun),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

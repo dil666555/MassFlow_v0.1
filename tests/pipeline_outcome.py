@@ -80,18 +80,18 @@ TIME_DATA = {
         },
     },
     'Peak Alignment': {
-        'PPM': {
-            'min':   (2.040, 0.9440),
-            'mid':   (2.813, 1.1509),
-            'max':   (11.355, 4.5226),
-            'ultra': (18.889, 5.7167),
+        'Default': {
+            'min':   (2.827, 0.9214473),
+            'mid':   (4.239, 1.1097435),
+            'max':   (10.376333, 4.8021340),
+            'ultra': (28.203, 6.5740955),
         },
     },
 }
 
 def _card_b_to_mib(v):
-    """Cardinal peakRAM reports bytes in a column labelled MiB; convert."""
-    return v / (1024 * 1024)
+    """Cardinal peakRAM reports Vcell counts in a column labelled MiB; convert."""
+    return v * 8 / (1024 * 1024)
 
 
 MEMORY_DATA = {
@@ -176,11 +176,11 @@ MEMORY_DATA = {
         },
     },
     'Peak Alignment': {
-        'PPM': {
-            'min':   (_card_b_to_mib(7573175),    81.2),
-            'mid':   (_card_b_to_mib(21204119),   89.1),
-            'max':   (_card_b_to_mib(163767478),  76.8),
-            'ultra': (_card_b_to_mib(80068620),   440.4),
+        'Default': {
+            'min':   (262.01716, 82.3),
+            'mid':   (178.57173, 89.1),
+            'max':   (1324.08987, 76.8),
+            'ultra': (881.68367, 446.0),
         },
     },
 }

@@ -14,17 +14,19 @@ logger = get_logger("test_align")
 
 ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-
+BINFUN = ["min"]
+FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
+FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _run_peak_align_from_dm_process(
     ms_raw_data: MSDataManagerImzML,
     batch_size: int,
     units: str,
+    binfun: str,
 ):
-    reference, tolerance = compute_reference(ms_raw_data, units=units, clear_memory=False)
+    reference, tolerance = compute_reference(ms_raw_data, units=units, clear_memory=False, binfun=binfun)
     tolerance = tolerance * 1e6 if units == "ppm" else tolerance
     batch_kwargs = {
         "reference": reference,
@@ -42,8 +44,9 @@ def _run_peak_align_from_dm_process(
 def _peak_align_flat_from_flat_batches(
     flat_batches,
     units: str,
+    binfun: str,
 ):
-    reference, tolerance = reference_computer(flat_batches, units=units)
+    reference, tolerance = reference_computer(flat_batches, units=units, binfun=binfun)
 
     for mz_flat, intensity_flat, lengths in flat_batches:
         _ = FlatPreprocess.peak_align_flat(
@@ -98,7 +101,8 @@ class TestAlign:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
-    def test_align_speed(self, benchmark, ms_raw_data, units):
+    @pytest.mark.parametrize("binfun", BINFUN)
+    def test_align_speed(self, benchmark, ms_raw_data, units, binfun):
         """Benchmark batch peak align via speed_process."""
 
         benchmark.pedantic(
@@ -107,6 +111,7 @@ class TestAlign:
                 ms_raw_data,
                 1024,
                 units,
+                binfun,
             ),
             rounds=ROUNDS,
             iterations=1,
@@ -115,14 +120,15 @@ class TestAlign:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
-    def test_align_flat_speed(self, benchmark, flat_caches, units):
+    @pytest.mark.parametrize("binfun", BINFUN)
+    def test_align_flat_speed(self, benchmark, flat_caches, units, binfun):
         """Benchmark flat peak align via peak_align_flat."""
 
         flat_batches = flat_caches
 
         benchmark.pedantic(
             _peak_align_flat_from_flat_batches,
-            args=(flat_batches, units),
+            args=(flat_batches, units, binfun),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
