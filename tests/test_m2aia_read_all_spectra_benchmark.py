@@ -29,7 +29,15 @@ def imzml_path() -> Path:
     return _benchmark_file_path()
 
 
+def _load_m2aia_reader(path: Path, **kwargs):
+    m2 = pytest.importorskip("m2aia")
+    reader = m2.ImzMLReader(str(path), **kwargs)
+    reader.Execute()
+    return reader
+
+
 def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, float]:
+    """Read all spectra through MassFlow's direct flat imzML reader."""
     dm = MSDataManagerImzML(filepath=str(path), max_threads=MAX_THREADS)
     try:
         dm.load_head_data()
@@ -45,7 +53,7 @@ def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, float]:
         ):
             spectrum_count += int(lengths.size)
             point_count += int(lengths.sum())
-            intensity_sum += float(np.asarray(intensity_flat, dtype=np.float64).sum())
+            intensity_sum += float(np.sum(intensity_flat, dtype=np.float64))
 
         return spectrum_count, point_count, intensity_sum
     finally:
@@ -53,18 +61,17 @@ def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, float]:
 
 
 def _read_all_spectra_m2aia(path: Path) -> tuple[int, int, float]:
-    m2 = pytest.importorskip("m2aia")
-    reader = m2.ImzMLReader(str(path))
+    """Read all spectra through m2aia without signal processing."""
+    reader = _load_m2aia_reader(path)
 
     spectrum_count = 0
     point_count = 0
     intensity_sum = 0.0
 
     for _, _, ys in reader.SpectrumIterator():
-        y_values = np.asarray(ys, dtype=np.float64)
         spectrum_count += 1
-        point_count += int(y_values.size)
-        intensity_sum += float(y_values.sum())
+        point_count += int(len(ys))
+        intensity_sum += float(np.sum(ys, dtype=np.float64))
 
     return spectrum_count, point_count, intensity_sum
 
