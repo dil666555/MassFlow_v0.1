@@ -8,9 +8,9 @@ table data:
   - fig_expa_memory.{png,svg}   -> 图4  Experiment (a): ProjectNAME vs Cardinal peak-memory ratio
   - stats.json                  -> Table 2 cell values (ProjectNAME flat: time s / peak mem MiB)
 
-Each bar = baseline-tool time/memory divided by ProjectNAME's, so a bar above the
-dashed parity line (1×) favours ProjectNAME; bars below it (ProjectNAME loses) are
-flagged with a red outline. Log y-axis. Output goes to ./figures next to this file.
+Each bar = baseline-tool time/memory divided by ProjectNAME's; bars below 1×
+(ProjectNAME loses) are flagged with a red outline. Log y-axis. Output goes to
+./figures next to this file.
 
 Sources of truth (curated by the authors, identical to the existing per-method SVGs):
   - ../tests/pipeline_outcome.py : (Cardinal, MassFlow/flat) for time & memory, 4 datasets
@@ -39,7 +39,7 @@ os.makedirs(OUT, exist_ok=True)
 # ---- style ------------------------------------------------------------------
 plt.rcParams.update({
     "font.family": "Arial",
-    "font.size": 8,
+    "font.size": 10,
     "axes.linewidth": 0.7,
     "svg.fonttype": "none",
 })
@@ -66,8 +66,7 @@ def short(m):
     return METH_SHORT.get(m, m)
 
 
-def composite(data, stages, datasets, ds_labels, shades, note, fname,
-              logscale=True):
+def composite(data, stages, datasets, ds_labels, shades, fname, logscale=True):
     """One row of stage panels; grouped bars per method, one bar per dataset.
 
     Both dicts store the *baseline* tool first and ProjectNAME second, so the
@@ -108,8 +107,11 @@ def composite(data, stages, datasets, ds_labels, shades, note, fname,
         if logscale:
             ax.set_yscale("log")
             ax.set_ylim(min(0.7, vmin * 0.8), vmax * 1.5)
+            ax.yaxis.set_major_locator(mticker.LogLocator(base=10, subs=(1.0,)))
             ax.yaxis.set_major_formatter(mticker.FuncFormatter(
                 lambda v, _: ("%g" % v)))
+            ax.yaxis.set_minor_locator(mticker.NullLocator())
+            ax.yaxis.set_minor_formatter(mticker.NullFormatter())
         else:
             ax.set_ylim(0, vmax * 1.15)
         ax.set_xticks(x)
@@ -123,14 +125,13 @@ def composite(data, stages, datasets, ds_labels, shades, note, fname,
             ax.set_ylabel("Relative ratio  (×)", fontsize=8)
         ax.grid(axis="y", color="#eeeeee", lw=0.5, zorder=0)
 
-    # legend + note live in a reserved top strip so panel titles never collide
-    fig.subplots_adjust(left=0.072, right=0.985, top=0.78, bottom=0.11)
+    # Legend lives in a reserved top strip so panel titles never collide.
+    fig.subplots_adjust(left=0.072, right=0.985, top=0.82, bottom=0.11)
     proxies = [mpatches.Patch(facecolor=shades[k], edgecolor="white", label=ds_labels[k])
                for k in range(len(datasets))]
     fig.legend(handles=proxies, loc="upper center", ncol=len(datasets),
                frameon=False, fontsize=8, bbox_to_anchor=(0.5, 1.005),
                handlelength=1.1, columnspacing=1.6)
-    fig.text(0.5, 0.88, note, ha="center", fontsize=6.8, color="#555555")
     fig.savefig(os.path.join(OUT, fname + ".png"), dpi=300)
     fig.savefig(os.path.join(OUT, fname + ".svg"))
     plt.close(fig)
@@ -142,17 +143,13 @@ DS3 = ["min", "mid", "max"]
 LAB4 = ["Min", "Mid", "Max", "Ultra"]
 LAB3 = ["Min", "Mid", "Max"]
 
-# Experiment (b): Numba(Flat) speedup over NumPy(Batch), pure compute
-NOTE_B = "dashed line = parity (1×);  bars above it = ProjectNAME (Numba) faster than NumPy"
-NOTE_AT = "dashed line = parity (1×);  bars above it = ProjectNAME faster than Cardinal"
-NOTE_AM = "dashed line = parity (1×);  bars above it = ProjectNAME leaner than Cardinal"
-sb = composite(B_TIME, STAGE_ORDER, DS3, LAB3, SHADES3, NOTE_B,
+sb = composite(B_TIME, STAGE_ORDER, DS3, LAB3, SHADES3,
                "fig_expb_speedup", logscale=True)
 # Experiment (a): time speedup MassFlow vs Cardinal
-sa_t = composite(A_TIME, STAGE_ORDER, DS4, LAB4, SHADES4, NOTE_AT,
+sa_t = composite(A_TIME, STAGE_ORDER, DS4, LAB4, SHADES4,
                  "fig_expa_time", logscale=True)
 # Experiment (a): memory ratio MassFlow vs Cardinal
-sa_m = composite(A_MEM, STAGE_ORDER, DS4, LAB4, SHADES4, NOTE_AM,
+sa_m = composite(A_MEM, STAGE_ORDER, DS4, LAB4, SHADES4,
                  "fig_expa_memory", logscale=True)
 
 # ---- statistics -------------------------------------------------------------
