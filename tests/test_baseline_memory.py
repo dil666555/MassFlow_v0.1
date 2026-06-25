@@ -9,11 +9,11 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_baseline")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+FILE_MIN = '/Users/dre/Desktop/data/min/file_min_profile.imzML'
+FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
 FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 TEMP_DIR = "./temp"
@@ -43,10 +43,14 @@ def _run_baseline_reduction_from_pipeline(
     ms_raw_data: MSDataManagerImzML,
     method: str,
     width: int,
+    m: int | None = None,
 ):
+    kwargs = {"method": method, "width": width}
+    if m is not None:
+        kwargs["m"] = m
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR)
-        .baseline_correction(method=method, width=width)
+        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR, queue_ab_size=1, queue_bc_size=1)
+        .baseline_correction(**kwargs)
         .start()
     )
 
@@ -59,7 +63,7 @@ class TestBaseline:
             uv run pytest ./tests/test_baseline.py -k "test_baseline_speed or test_baseline_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX, FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for baseline benchmarks."""
         data_file_path = request.param
@@ -92,9 +96,11 @@ class TestBaseline:
             "width": 5,
         }
 
+        m_value = 5 if method == "snip_numba" else None
+
         benchmark.pedantic(
             _run_baseline_reduction_from_pipeline,
-            args=(ms_raw_data, flat_kwargs["method"], flat_kwargs["width"]),
+            args=(ms_raw_data, flat_kwargs["method"], flat_kwargs["width"], m_value),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

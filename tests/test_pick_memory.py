@@ -9,13 +9,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_pick")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 TEMP_DIR = "./temp"
 
 
@@ -73,7 +73,7 @@ class TestPick:
             uv run pytest ./tests/test_pick_memory.py -k "test_pick_memory or test_pick_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for pick benchmarks."""
         data_file_path = request.param

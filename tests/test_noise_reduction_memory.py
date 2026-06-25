@@ -8,13 +8,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.test.test_noise_reduction")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 TEMP_DIR = "./temp"
 
 
@@ -43,7 +43,7 @@ def _run_noise_reduction_flat_from_pipeline(
     window: int,
 ):
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR, queue_ab_size=2, queue_bc_size=2)
+        Preprocessor(ms_raw_data, batch_size=128, temp_dir=TEMP_DIR, queue_ab_size=2, queue_bc_size=2)
         .noise_reduction(method=method, window=window)
         .start()
     )
@@ -57,7 +57,7 @@ class TestNoiseReductionAPI:
         uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
         data_file_path = request.param

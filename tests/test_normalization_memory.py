@@ -10,13 +10,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_normalization")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 TEMP_DIR = "./temp"
 
 def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, float]:
@@ -72,7 +72,7 @@ def _run_normalization_from_pipeline(
         norm_kwargs["ref_tolerance"] = ref_tolerance
 
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=256, temp_dir=TEMP_DIR, queue_ab_size=2, queue_bc_size=2)
+        Preprocessor(ms_raw_data, batch_size=128, temp_dir=TEMP_DIR, queue_ab_size=1, queue_bc_size=1)
         .normalization(**norm_kwargs)
         .start()
     )
@@ -86,7 +86,7 @@ class TestNormalization:
             uv run pytest ./tests/test_normalization_memory.py -k "test_normalization_memory or test_normalization_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for normalization benchmarks."""
         data_file_path = request.param
