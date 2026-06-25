@@ -3,9 +3,9 @@ subsection of the technical note (results & discussion).
 
 Generates the three figures embedded in the paper plus the absolute-performance
 table data:
-  - fig_expb_speedup.{png,svg}  -> 图2  Experiment (b): Numba(Flat) vs NumPy(Batch) pure-compute speedup
-  - fig_expa_time.{png,svg}     -> 图3  Experiment (a): ProjectNAME vs Cardinal runtime ratio
-  - fig_expa_memory.{png,svg}   -> 图4  Experiment (a): ProjectNAME vs Cardinal peak-memory ratio
+  - fig_expa_speedup.{png,svg}  -> 图2  Experiment (a): Numba(Flat) vs NumPy(Batch) pure-compute speedup
+  - fig_expb_time.{png,svg}     -> 图3  Experiment (b): ProjectNAME vs Cardinal runtime ratio
+  - fig_expb_memory.{png,svg}   -> 图4  Experiment (b): ProjectNAME vs Cardinal peak-memory ratio
   - stats.json                  -> Table 2 cell values (ProjectNAME flat: time s / peak mem MiB)
 
 Each bar = baseline-tool time/memory divided by ProjectNAME's; bars below 1×
@@ -13,8 +13,8 @@ Each bar = baseline-tool time/memory divided by ProjectNAME's; bars below 1×
 ./figures next to this file.
 
 Sources of truth (curated by the authors, identical to the existing per-method SVGs):
+  - ../tests/python_outcome.py   : (Batch/NumPy, Flat/Numba) pure-compute time, 4 datasets
   - ../tests/pipeline_outcome.py : (Cardinal, MassFlow/flat) for time & memory, 4 datasets
-  - ../tests/python_outcome.py   : (Batch/NumPy, Flat/Numba) pure-compute time, 3 datasets
 
 Run:  ../.venv/Scripts/python.exe plot.py
 """
@@ -30,8 +30,8 @@ import numpy as np
 ROOT = os.path.dirname(os.path.abspath(__file__))           # .../MassFlow_v0.1/plot_for_paper
 PKG = os.path.dirname(ROOT)                                 # .../MassFlow_v0.1
 sys.path.insert(0, PKG)
-from tests.pipeline_outcome import TIME_DATA as A_TIME, MEMORY_DATA as A_MEM   # (cardinal, massflow)
-from tests.python_outcome import TIME_DATA as B_TIME                            # (batch, flat)
+from tests.python_outcome import TIME_DATA as A_TIME                            # (batch, flat)
+from tests.pipeline_outcome import TIME_DATA as B_TIME, MEMORY_DATA as B_MEM   # (cardinal, massflow)
 
 OUT = os.path.join(ROOT, "figures")
 os.makedirs(OUT, exist_ok=True)
@@ -45,7 +45,6 @@ plt.rcParams.update({
 })
 # blue sequential shades (light Min -> dark Ultra), consistent with MassFlow blue
 SHADES4 = ["#CFE8F7", "#8FCDEC", "#4FA8DC", "#2E73B0"]
-SHADES3 = ["#9AD3EF", "#4FA8DC", "#2E73B0"]
 REF = "#9aa0a6"
 LOSS = "#E8A0A0"  # outline flag when ProjectNAME loses (<1)
 
@@ -141,18 +140,16 @@ def composite(data, stages, datasets, ds_labels, shades, fname, logscale=True):
 
 
 DS4 = ["min", "mid", "max", "ultra"]
-DS3 = ["min", "mid", "max"]
 LAB4 = ["Min", "Mid", "Max", "Ultra"]
-LAB3 = ["Min", "Mid", "Max"]
 
-sb = composite(B_TIME, STAGE_ORDER, DS3, LAB3, SHADES3,
-               "fig_expb_speedup", logscale=True)
-# Experiment (a): time speedup MassFlow vs Cardinal
-sa_t = composite(A_TIME, STAGE_ORDER, DS4, LAB4, SHADES4,
-                 "fig_expa_time", logscale=True)
-# Experiment (a): memory ratio MassFlow vs Cardinal
-sa_m = composite(A_MEM, STAGE_ORDER, DS4, LAB4, SHADES4,
-                 "fig_expa_memory", logscale=True)
+sa = composite(A_TIME, STAGE_ORDER, DS4, LAB4, SHADES4,
+               "fig_expa_speedup", logscale=True)
+# Experiment (b): time speedup MassFlow vs Cardinal
+sb_t = composite(B_TIME, STAGE_ORDER, DS4, LAB4, SHADES4,
+                 "fig_expb_time", logscale=True)
+# Experiment (b): memory ratio MassFlow vs Cardinal
+sb_m = composite(B_MEM, STAGE_ORDER, DS4, LAB4, SHADES4,
+                 "fig_expb_memory", logscale=True)
 
 # ---- statistics -------------------------------------------------------------
 def stats_block(data, stages, datasets, label):
@@ -177,21 +174,21 @@ def stats_block(data, stages, datasets, label):
     return rows
 
 
-rb = stats_block(B_TIME, STAGE_ORDER, DS3, "Experiment (a) Numba/Flat speedup over NumPy/Batch")
-ra_t = stats_block(A_TIME, STAGE_ORDER, DS4, "Experiment (b) time speedup MassFlow over Cardinal")
-ra_m = stats_block(A_MEM, STAGE_ORDER, DS4, "Experiment (b) memory ratio Cardinal/MassFlow")
+ra = stats_block(A_TIME, STAGE_ORDER, DS4, "Experiment (a) Numba/Flat speedup over NumPy/Batch")
+rb_t = stats_block(B_TIME, STAGE_ORDER, DS4, "Experiment (b) time speedup MassFlow over Cardinal")
+rb_m = stats_block(B_MEM, STAGE_ORDER, DS4, "Experiment (b) memory ratio Cardinal/MassFlow")
 
 # ---- absolute framework table (MassFlow flat = 2nd element of pipeline data) --
 print("\n===== Table 2: ProjectNAME (flat) absolute time(s) / peak mem(MiB) =====")
 print("stage | method | " + " | ".join(f"{d}_t/{d}_m" for d in DS4))
 table2 = {}
 for s in STAGE_ORDER:
-    for m in A_TIME[s]:
+    for m in B_TIME[s]:
         cells = []
         rowdata = {}
         for d in DS4:
-            t = A_TIME[s][m][d][1]
-            mem = A_MEM[s][m][d][1]
+            t = B_TIME[s][m][d][1]
+            mem = B_MEM[s][m][d][1]
             rowdata[d] = (round(t, 2), round(mem))
             cells.append(f"{t:6.2f}/{mem:6.0f}")
         table2[f"{s}|{m}"] = rowdata

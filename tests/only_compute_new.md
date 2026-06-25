@@ -17,8 +17,8 @@ pytest tests/test_baseline_speed.py::TestBaseline::test_baseline_flat_speed --be
 | test_baseline_speed[.../original.imzML-snip] | 108.1209 | 108.1209 | 108.1209 | 108.1209 | 0.0000 | 1 |
 | test_baseline_flat_speed[.../original.imzML-locmin_numba] | 6.2309 | 6.2309 | 6.2309 | 6.2309 | 0.0000 | 1 |
 | test_baseline_flat_speed[.../original.imzML-snip_numba] | 24.1004 | 24.1004 | 24.1004 | 24.1004 | 0.0000 | 1 |
-![alt text](image-10.png)
-![alt text](image-11.png)
+![alt text](image_of_test/image-10.png)
+![alt text](image_of_test/image-11.png)
 
 
 ## Noise Reduction
@@ -42,7 +42,7 @@ pytest tests/test_noise_reduction_speed.py::TestNoiseReductionAPI::test_nr_flat_
 | test_nr_flat_speed[.../original.imzML-ma_numba] | 192.3563 | 192.3563 | 192.3563 | 192.3563 | 0.0000 | 1 |
 | test_nr_flat_speed[.../original.imzML-gaussian_numba] | 496.5438 | 496.5438 | 496.5438 | 496.5438 | 0.0000 | 1 |
 | test_nr_flat_speed[.../original.imzML-savgol_numba] | 686.0692 | 686.0692 | 686.0692 | 686.0692 | 0.0000 | 1 |
-![alt text](image-12.png)
+![alt text](image_of_test/image-12.png)
 
 
 ## Normalization
@@ -66,7 +66,7 @@ pytest tests/test_normalization_speed.py::TestNormalizationAPI::test_norm_flat_s
 | test_norm_flat_speed[.../original.imzML-tic_numba] | 875.8963 | 875.8963 | 875.8963 | 875.8963 | 0.0000 | 1 |
 | test_norm_flat_speed[.../original.imzML-ref_numba] | 6,434.0061 | 6,434.0061 | 6,434.0061 | 6,434.0061 | 0.0000 | 1 |
 
-![alt text](image-13.png)
+![alt text](image_of_test/image-13.png)
 
 
 ## Peak Pick
@@ -90,7 +90,7 @@ pytest tests/test_pick_speed.py::TestPick::test_pick_flat_speed --benchmark-only
 | test_pick_flat_speed[.../original.imzML-diff] | 34.3804 | 34.3804 | 34.3804 | 34.3804 | 0.0000 | 1 |
 | test_pick_flat_speed[.../original.imzML-mad] | 45.1137 | 45.1137 | 45.1137 | 45.1137 | 0.0000 | 1 |
 
-![alt text](image-14.png)
+![alt text](image_of_test/image-14.png)
 
 
 

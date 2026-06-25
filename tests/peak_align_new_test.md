@@ -23,7 +23,7 @@ pytest tests/test_align_speed.py::TestAlign::test_align_flat_speed --benchmark-o
 | test_align_speed[.../example.imzML-min-ppm] | max | min | 15,496.0273 | 15,520.2496 | 15,516.7600 | 15,558.3641 | 25.3781 | 5 |
 
 9 passed, 13 warnings in 402.84s (0:06:42)
-![alt text](image-2.png)
+![alt text](image_of_test/image-2.png)
 
 ## test_align_flat_speed
 
@@ -40,7 +40,7 @@ pytest tests/test_align_speed.py::TestAlign::test_align_flat_speed --benchmark-o
 | test_align_flat_speed[.../example.imzML-median-ppm] | max | median | 3,536.4669 | 3,575.1460 | 3,569.3035 | 3,615.6033 | 32.2840 | 5 |
 
 9 passed, 13 warnings in 139.48s (0:02:19)
-![alt text](image-3.png)
+![alt text](image_of_test/image-3.png)
 
 Memory commands:
 
@@ -70,7 +70,7 @@ pytest tests/test_align_memory.py::TestAlign::test_align_flat_memory --memray --
 12 passed
 
 
-![alt text](image-9.png)
+![alt text](image_of_test/image-9.png)
 
 ## test_align_flat_memory
 
@@ -90,9 +90,9 @@ pytest tests/test_align_memory.py::TestAlign::test_align_flat_memory --memray --
 | min (file_min_profile.imzML) | max | 74.0 | 57 | 36.4MiB (render:imzml:132 / _write_xml) |
 
 9 passed in 306.28s (0:05:06)
-![alt text](image-4.png)
-![alt text](image-5.png)
-![alt text](image-6.png)
+![alt text](image_of_test/image-4.png)
+![alt text](image_of_test/image-5.png)
+![alt text](image_of_test/image-6.png)
 
 ## test_align_flat_memory - batch_size = 128
 
@@ -269,7 +269,7 @@ align_memory
 11      max max 14.184 14.222333 14.193 14.290 0.058773577      3
 12    ultra max 39.883 40.085667 39.919 40.455 0.320358133      3
 ```
-![alt text](image-7.png)
+![alt text](image_of_test/image-7.png)
 
 ``` r
 > align_memory
@@ -301,4 +301,4 @@ align_memory
 12          36723243          36723243               280.17611
 > 
 ```
-![alt text](image-8.png)
+![alt text](image_of_test/image-8.png)

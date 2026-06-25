@@ -12,12 +12,12 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_align")
 
-ROUNDS = 1
+ROUNDS = 5
 ALIGN_UNITS = ["ppm"]
 BINFUN = ["min"]
-# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
-# FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
-# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
+FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _run_peak_align_from_dm_process(
