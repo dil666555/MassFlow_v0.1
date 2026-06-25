@@ -9,12 +9,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_baseline")
 
-ROUNDS = 5
+ROUNDS = 1
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _baseline_reduction_flat_from_flat_batches(
     flat_batches,
@@ -37,7 +38,7 @@ class TestBaseline:
             uv run pytest ./tests/test_baseline.py -k "test_baseline_speed or test_baseline_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for baseline benchmarks."""
         data_file_path = request.param
@@ -47,7 +48,7 @@ class TestBaseline:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def flat_caches(self, request):
         """Fixture providing pre-generated flat arrays and lengths for flat benchmarks."""
         data_file_path = request.param

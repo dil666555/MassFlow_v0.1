@@ -12,9 +12,9 @@ logger = get_logger("test_pick")
 ROUNDS = 5
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
 FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
 TEMP_DIR = "./temp"
 

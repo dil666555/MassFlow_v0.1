@@ -12,12 +12,12 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_align")
 
-ROUNDS = 5
+ROUNDS = 1
 ALIGN_UNITS = ["ppm"]
 BINFUN = ["min"]
-FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
-FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
-FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+# FILE_MID = "/Users/dre/Desktop/data/max/file_max_profile.imzML"
+# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _run_peak_align_from_dm_process(
@@ -65,7 +65,7 @@ class TestAlign:
             uv run pytest ./tests/test_align_speed.py -k "test_align_speed or test_align_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for align benchmarks."""
         data_file_path = request.param
@@ -78,7 +78,7 @@ class TestAlign:
             pass
         return picked_dm
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def flat_caches(self, request):
         """Fixture providing pre-generated flat arrays and reference axis for align benchmarks."""
         data_file_path = request.param

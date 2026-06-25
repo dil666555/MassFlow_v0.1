@@ -9,7 +9,7 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_baseline")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
 # FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'

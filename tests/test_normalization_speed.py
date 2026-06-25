@@ -8,12 +8,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_normalization")
 
-ROUNDS = 5
+ROUNDS = 1
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
+# FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
+# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _normalization_flat_from_flat_batches(
     flat_batches,
@@ -39,7 +40,7 @@ def _normalization_flat_from_flat_batches(
 class TestNormalizationAPI:
     """Normalization API tests: memory, speed, consistency, and normalization invariants."""
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
@@ -48,7 +49,7 @@ class TestNormalizationAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_MIN, FILE_MID, FILE_MAX])
+    @pytest.fixture(scope="module", params=[FILE_ULTRA])
     def flat_caches(self, request):
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)

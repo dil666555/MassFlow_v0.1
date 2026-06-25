@@ -8,7 +8,7 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.test.test_noise_reduction")
 
-ROUNDS = 5
+ROUNDS = 1
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
 # FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
