@@ -49,11 +49,11 @@ SHADES3 = ["#9AD3EF", "#4FA8DC", "#2E73B0"]
 REF = "#9aa0a6"
 LOSS = "#E8A0A0"  # outline flag when ProjectNAME loses (<1)
 
-STAGE_ORDER = ["Baseline Correction", "Noise Reduction", "Normalization",
-               "Peak Picking", "Peak Alignment"]
+STAGE_ORDER = ["Baseline Correction", "Normalization", "Peak Alignment",
+               "Noise Reduction", "Peak Picking"]
 STAGE_SHORT = {"Baseline Correction": "Baseline", "Noise Reduction": "Denoising",
                "Normalization": "Normalization", "Peak Picking": "Peak Picking",
-               "Peak Alignment": "Align"}
+               "Peak Alignment": "Alignment"}
 METH_SHORT = {"Savitzky–Golay": "SG", "locmin": "LocMin", "snip": "SNIP",
               "Gaussian": "Gauss", "Reference": "Ref"}
 
@@ -98,12 +98,12 @@ def composite(data, stages, datasets, ds_labels, shades, fname, logscale=True):
             xpos = x - 0.4 + bw * (k + 0.5)
             bars = ax.bar(xpos, vals, bw, color=shades[k],
                           edgecolor="white", linewidth=0.4,
-                          label=ds_labels[k], zorder=3)
+                          label=ds_labels[k], zorder=2)
             # flag losses (<1) with a red outline
             for bar, v in zip(bars, vals):
                 if v < 1.0:
                     bar.set_edgecolor(LOSS); bar.set_linewidth(0.8)
-        ax.axhline(1.0, color=REF, lw=0.8, ls=(0, (4, 2)), zorder=2)
+        ax.axhline(1.0, color="#eeeeee", lw=0.5, zorder=1)
         if logscale:
             ax.set_yscale("log")
             ax.set_ylim(min(0.7, vmin * 0.8), vmax * 1.5)
@@ -119,10 +119,12 @@ def composite(data, stages, datasets, ds_labels, shades, fname, logscale=True):
         ax.set_title(STAGE_SHORT[s], fontsize=8.5, fontweight="bold", pad=4)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_zorder(5)
+        ax.spines["left"].set_zorder(5)
         ax.tick_params(axis="both", labelsize=7, length=2)
         ax.margins(x=0.08)
         if j == 0:
-            ax.set_ylabel("Relative ratio  (×)", fontsize=8)
+            ax.set_ylabel("Relative ratio (×)", fontsize=8)
         ax.grid(axis="y", color="#eeeeee", lw=0.5, zorder=0)
 
     # Legend lives in a reserved top strip so panel titles never collide.

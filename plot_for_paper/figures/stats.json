@@ -36,60 +36,6 @@
     544
    ]
   },
-  "Noise Reduction|MA": {
-   "min": [
-    1.29,
-    99
-   ],
-   "mid": [
-    2.47,
-    95
-   ],
-   "max": [
-    4.34,
-    439
-   ],
-   "ultra": [
-    24.61,
-    547
-   ]
-  },
-  "Noise Reduction|Gaussian": {
-   "min": [
-    1.23,
-    75
-   ],
-   "mid": [
-    2.39,
-    89
-   ],
-   "max": [
-    3.88,
-    440
-   ],
-   "ultra": [
-    23.94,
-    540
-   ]
-  },
-  "Noise Reduction|Savitzky–Golay": {
-   "min": [
-    1.29,
-    75
-   ],
-   "mid": [
-    2.75,
-    89
-   ],
-   "max": [
-    3.86,
-    440
-   ],
-   "ultra": [
-    24.02,
-    540
-   ]
-  },
   "Normalization|TIC": {
    "min": [
     1.18,
@@ -142,6 +88,78 @@
    "ultra": [
     23.21,
     545
+   ]
+  },
+  "Peak Alignment|Default": {
+   "min": [
+    0.92,
+    82
+   ],
+   "mid": [
+    1.11,
+    89
+   ],
+   "max": [
+    4.8,
+    77
+   ],
+   "ultra": [
+    6.57,
+    446
+   ]
+  },
+  "Noise Reduction|MA": {
+   "min": [
+    1.29,
+    99
+   ],
+   "mid": [
+    2.47,
+    95
+   ],
+   "max": [
+    4.34,
+    439
+   ],
+   "ultra": [
+    24.61,
+    547
+   ]
+  },
+  "Noise Reduction|Gaussian": {
+   "min": [
+    1.23,
+    75
+   ],
+   "mid": [
+    2.39,
+    89
+   ],
+   "max": [
+    3.88,
+    440
+   ],
+   "ultra": [
+    23.94,
+    540
+   ]
+  },
+  "Noise Reduction|Savitzky–Golay": {
+   "min": [
+    1.29,
+    75
+   ],
+   "mid": [
+    2.75,
+    89
+   ],
+   "max": [
+    3.86,
+    440
+   ],
+   "ultra": [
+    24.02,
+    540
    ]
   },
   "Peak Picking|Quantile": {
@@ -214,24 +232,6 @@
    "ultra": [
     48.13,
     404
-   ]
-  },
-  "Peak Alignment|Default": {
-   "min": [
-    0.92,
-    82
-   ],
-   "mid": [
-    1.11,
-    89
-   ],
-   "max": [
-    4.8,
-    77
-   ],
-   "ultra": [
-    6.57,
-    446
    ]
   }
  }
