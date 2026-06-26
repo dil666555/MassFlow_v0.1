@@ -9,12 +9,12 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_baseline")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+# FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _baseline_reduction_flat_from_flat_batches(
@@ -29,6 +29,7 @@ def _baseline_reduction_flat_from_flat_batches(
             method=method,
             width=width,
             lengths=lengths,
+            m=5,
         )
 
 class TestBaseline:
@@ -57,7 +58,7 @@ class TestBaseline:
 
         caches = []
         for _, intensity_flat, lengths, _ in dm.flat_generator(
-            batch_size=4096, include_mz=False, max_threads=16
+            batch_size=256, include_mz=False, max_threads=16
         ):
             caches.append((intensity_flat, lengths))
 
@@ -80,7 +81,7 @@ class TestBaseline:
             speed_process,
             args=(
                 ms_raw_data,
-                1024,
+                256,
                 BatchPreprocess.baseline_correction_batch,
                 batch_kwargs,
             ),

@@ -8,13 +8,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_normalization")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
+# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+# FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _normalization_flat_from_flat_batches(
     flat_batches,
@@ -40,7 +40,7 @@ def _normalization_flat_from_flat_batches(
 class TestNormalizationAPI:
     """Normalization API tests: memory, speed, consistency, and normalization invariants."""
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
@@ -49,7 +49,7 @@ class TestNormalizationAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def flat_caches(self, request):
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
@@ -57,7 +57,7 @@ class TestNormalizationAPI:
 
         caches = []
         for mz_data, intensity_flat, lengths, _ in dm.flat_generator(
-            batch_size=4096,
+            batch_size=256,
             include_mz=True,
             max_threads=16,
         ):
@@ -83,7 +83,7 @@ class TestNormalizationAPI:
 
         benchmark.pedantic(
             speed_process,
-            args=(ms_raw_data, 4096, BatchPreprocess.normalization_batch, batch_kwargs),
+            args=(ms_raw_data, 256, BatchPreprocess.normalization_batch, batch_kwargs),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

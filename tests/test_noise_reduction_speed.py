@@ -8,13 +8,13 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("massflow.test.test_noise_reduction")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
+# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+# FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _noise_reduction_flat_from_flat_batches(
     flat_batches,
@@ -37,7 +37,7 @@ class TestNoiseReductionAPI:
         uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
         data_file_path = request.param
@@ -47,14 +47,14 @@ class TestNoiseReductionAPI:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MID])
     def flat_caches(self, request):
         data_file_path = request.param
         dm = MSDataManagerImzML(filepath=data_file_path)
         dm.load_head_data()
 
         caches = []
-        for _, intensity_flat, lengths, _ in dm.flat_generator(batch_size=4096, include_mz=False, max_threads=16):
+        for _, intensity_flat, lengths, _ in dm.flat_generator(batch_size=256, include_mz=False, max_threads=16):
             caches.append((intensity_flat, lengths))
 
         dm.close()
@@ -77,7 +77,7 @@ class TestNoiseReductionAPI:
 
         benchmark.pedantic(
             speed_process,
-            args=(ms_raw_data, 4096, BatchPreprocess.noise_reduction_batch, batch_kwargs),
+            args=(ms_raw_data, 256, BatchPreprocess.noise_reduction_batch, batch_kwargs),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

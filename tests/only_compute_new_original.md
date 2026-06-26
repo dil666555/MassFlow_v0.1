@@ -1,6 +1,3 @@
-## 由于ultra 数据太大，测试使用完整 pipeline 代替
-
-
 ## Baseline Correction
 
 Time commands:
@@ -11,14 +8,20 @@ pytest tests/test_baseline_speed.py::TestBaseline::test_baseline_flat_speed --be
 ```
 ### result
 
-| Name (time in s) | Min | Mean | Median | Max | StdDev | Rounds |
-| --- | --- | --- | --- | --- | --- | --- |
-| test_baseline_speed[.../original.imzML-locmin] | 23.0292 | 23.0292 | 23.0292 | 23.0292 | 0.0000 | 1 |
-| test_baseline_speed[.../original.imzML-snip] | 108.1209 | 108.1209 | 108.1209 | 108.1209 | 0.0000 | 1 |
-| test_baseline_flat_speed[.../original.imzML-locmin_numba] | 6.2309 | 6.2309 | 6.2309 | 6.2309 | 0.0000 | 1 |
-| test_baseline_flat_speed[.../original.imzML-snip_numba] | 24.1004 | 24.1004 | 24.1004 | 24.1004 | 0.0000 | 1 |
-![alt text](image_of_test/image-10.png)
-![alt text](image_of_test/image-11.png)
+test_baseline_speed (batch, time in s)
+
+| method | min (s) | mean (s) | median (s) | max (s) | stddev (s) | rounds |
+|---|---|---|---|---|---|---|
+| locmin | 23.4376 | 23.4377 | 23.4377 | 23.4378 | 0.0001 | 2 |
+| snip   | 106.7617 | 106.7622 | 106.7622 | 106.7626 | 0.0006 | 2 |
+
+test_baseline_flat_speed (flat, time in s)
+
+| method | min (s) | mean (s) | median (s) | max (s) | stddev (s) | rounds |
+|---|---|---|---|---|---|---|
+| snip_numba   | 2.6899 | 2.7108 | 2.7108 | 2.7317 | 0.0296 | 2 |
+| locmin_numba | 3.2730 | 3.2848 | 3.2848 | 3.2966 | 0.0167 | 2 |
+![alt text](image-31.png)
 
 
 ## Noise Reduction
@@ -106,6 +109,7 @@ pytest tests/test_align_speed.py::TestAlign::test_align_flat_speed --benchmark-o
 
 | Name (time in s) | Min | Mean | Median | Max | StdDev | Rounds |
 | --- | --- | --- | --- | --- | --- | --- |
-| test_align_speed[.../original.imzML-min-ppm] | 7.1948 | 7.1948 | 7.1948 | 7.1948 | 0.0000 | 1 |
-| test_align_flat_speed[.../original.imzML-min-ppm] | 1.8344 | 1.8344 | 1.8344 | 1.8344 | 0.0000 | 1 |
-
+| test_align_speed[.../original.imzML-min-ppm] | 7.1824 | 7.1831 | 7.1831 | 7.1837 | 0.0009 | 2 |
+| test_align_flat_speed[.../original.imzML-min-ppm] | 1.7612 | 1.8301 | 1.8301 | 1.8989 | 0.0973 | 2 |
+![alt text](image-32.png)
+![alt text](image-33.png)

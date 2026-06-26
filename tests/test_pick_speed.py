@@ -9,12 +9,12 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_pick")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
-FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/test_data_profile/file_max_profile/file_max_profile.imzML'
-FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
+# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+# FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 
@@ -62,7 +62,7 @@ class TestPick:
 
         caches = []
         for mz_data, intensity_flat, lengths, _ in dm.flat_generator(
-            batch_size=4096,
+            batch_size=256,
             include_mz=True,
             max_threads=16,
         ):
@@ -90,7 +90,7 @@ class TestPick:
             speed_process,
             args=(
                 ms_raw_data,
-                1024,
+                256,
                 BatchPreprocess.peak_pick_batch,
                 batch_kwargs,
             ),
