@@ -12,16 +12,21 @@ logger = get_logger("test_baseline")
 ROUNDS = 2
 BATCH_BASELINE_METHODS = ["locmin", "snip"]
 FLAT_BASELINE_METHODS = ["locmin_numba", "snip_numba"]
-# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
-# FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
-# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+THREADS = [1, 2, 4, 8, 16, 32]
+FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 def _baseline_reduction_flat_from_flat_batches(
     flat_batches,
     method: str,
     width: int,
+    threads: int,
 ):
+    from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
+    apply_numba_runtime(override_workers=threads)
+
     for intensity_flat, lengths in flat_batches:
         _ = FlatPreprocess.baseline_reduction_flat(
             mz_data=None, # type: ignore
@@ -92,7 +97,8 @@ class TestBaseline:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", FLAT_BASELINE_METHODS)
-    def test_baseline_flat_speed(self, benchmark, method, flat_caches):
+    @pytest.mark.parametrize("threads", THREADS)
+    def test_baseline_flat_speed(self, benchmark, method, flat_caches, threads):
         """Benchmark flat numba baseline reduction via baseline_reduction_flat."""
         logger.info(f"Benchmarking flat baseline reduction method={method}")
 
@@ -103,7 +109,7 @@ class TestBaseline:
 
         benchmark.pedantic(
             _baseline_reduction_flat_from_flat_batches,
-            args=(flat_caches, flat_kwargs["method"], flat_kwargs["width"]),
+            args=(flat_caches, flat_kwargs["method"], flat_kwargs["width"], threads),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

@@ -11,6 +11,7 @@ logger = get_logger("test_normalization")
 ROUNDS = 2
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
+THREADS = [1, 2, 4, 8, 16, 32]
 # FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
 FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
 # FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
@@ -21,7 +22,11 @@ def _normalization_flat_from_flat_batches(
     method: str,
     scale: float | None = None,
     ref_tolerance: float = 0.1,
+    threads: int = 1,
 ):
+    from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
+    apply_numba_runtime(override_workers=threads)
+
     for mz_flat, intensity_flat, lengths, ref in flat_batches:
         kwargs = {
             "mz_data": mz_flat,
@@ -91,17 +96,19 @@ class TestNormalizationAPI:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", FLAT_NORM_METHODS)
+    @pytest.mark.parametrize("threads", THREADS)
     def test_norm_flat_speed(
         self,
         benchmark,
         method,
         flat_caches,
+        threads,
     ):
         logger.info("Benchmarking flat normalization method=%s", method)
 
         benchmark.pedantic(
             _normalization_flat_from_flat_batches,
-            args=(flat_caches, method),
+            args=(flat_caches, method, None, 0.1, threads),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
