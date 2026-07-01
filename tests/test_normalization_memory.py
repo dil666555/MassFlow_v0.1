@@ -13,10 +13,11 @@ logger = get_logger("test_normalization")
 ROUNDS = 2
 BATCH_NORM_METHODS = ["tic", "rms"]
 FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
-# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
-# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+THREADS = [1, 4, 8, 12, 16, 18]
+FILE_MIN = "/home/Share_Space/data_local/min/file_min_profile.imzML"
+FILE_MID = "/home/Share_Space/data_local/mid/file_mid_profile.imzml"
+FILE_MAX = "/home/Share_Space/data_local/Example_read/example.imzML"
+FILE_ULTRA = "/home/Share_Space/data_local/original/brainSL7 CS-2-DHB+30um 380-240 70-1050 70000 -24-K3.7.imzML"
 TEMP_DIR = "./temp"
 
 def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, float]:

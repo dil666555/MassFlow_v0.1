@@ -9,13 +9,19 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_pick")
 
-ROUNDS = 2
+ROUNDS = 5
 BATCH_PICK_METHODS = ["origin"]
-FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
-# FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
-FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
-# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+FLAT_PICK_METHODS = ["sd"]
+NUMBA_THREADS = [1, 2, 4, 8, 16, 32]
+FLAT_PICK_CASES = [
+    pytest.param(method, "forward", threads, id=f"{method}-forward-{threads}")
+    for method in FLAT_PICK_METHODS
+    for threads in NUMBA_THREADS
+]
+# FILE_MIN = "/home/Share_Space/data_local/min/file_min_profile.imzML"
+# FILE_MID = "/home/Share_Space/data_local/mid/file_mid_profile.imzML"
+FILE_MAX = "/home/Share_Space/data_local/Example_read/example.imzML"
+# FILE_ULTRA = "/home/Share_Space/data_local/original/original.imzML"
 TEMP_DIR = "./temp"
 
 
@@ -51,9 +57,16 @@ def _run_peak_pick_from_pipeline(
     width: int,
     snr: float,
     return_type: str,
+    run_order: str,
+    threads: int,
 ):
     processed_manager = (
-        Preprocessor(ms_raw_data, batch_size=64, temp_dir=TEMP_DIR)
+        Preprocessor(
+            ms_raw_data,
+            batch_size=64,
+            temp_dir=f"{TEMP_DIR}/pick_flat_{run_order}_threads_{threads}",
+            numba_max_threads=threads,
+        )
         .peak_pick(
             method=method,
             width=width,
@@ -73,7 +86,7 @@ class TestPick:
             uv run pytest ./tests/test_pick_memory.py -k "test_pick_memory or test_pick_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MID])
+    @pytest.fixture(scope="module", params=[FILE_MAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for pick benchmarks."""
         data_file_path = request.param
@@ -96,10 +109,12 @@ class TestPick:
         )
 
     @pytest.mark.benchmark(timer=time.perf_counter)
-    @pytest.mark.parametrize("method", FLAT_PICK_METHODS)
-    def test_pick_flat_memory(self, benchmark, method, ms_raw_data):
+    @pytest.mark.parametrize("method,run_order,threads", FLAT_PICK_CASES)
+    def test_pick_flat_memory(self, benchmark, method, run_order, threads, ms_raw_data):
         """Benchmark flat peak pick via peak_pick pipeline."""
-        logger.info(f"Benchmarking flat peak pick method={method}")
+        logger.info(
+            f"Benchmarking flat peak pick method={method}, run_order={run_order}, threads={threads}"
+        )
 
         flat_kwargs = {
             "method": method,
@@ -116,6 +131,8 @@ class TestPick:
                 flat_kwargs["width"],
                 flat_kwargs["snr"],
                 flat_kwargs["return_type"],
+                run_order,
+                threads,
             ),
             rounds=ROUNDS,
             iterations=1,
