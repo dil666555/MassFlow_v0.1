@@ -252,7 +252,7 @@ def make_figure():
         fig,
         outer[0, 0],
         A_TIME,
-        "a)",
+        "a",
         "Internal benchmark: NumPy batch / Numba flat",
         "Speedup ratio (x)",
     )
@@ -260,7 +260,7 @@ def make_figure():
         fig,
         outer[1, 0],
         B_TIME,
-        "b)",
+        "b",
         "External benchmark: Cardinal / MassFlow runtime",
         "Runtime ratio (x)",
     )
@@ -268,7 +268,7 @@ def make_figure():
         fig,
         outer[2, 0],
         B_MEM,
-        "c)",
+        "c",
         "External benchmark: Cardinal / MassFlow peak memory",
         "Memory ratio (x)",
     )

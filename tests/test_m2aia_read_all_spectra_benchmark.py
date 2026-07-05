@@ -10,33 +10,33 @@ from massflow.data_manager import MSDataManagerImzML
 
 ROUNDS = int(os.getenv("MASSFLOW_M2AIA_BENCHMARK_ROUNDS", "5"))
 BATCH_SIZE = int(os.getenv("MASSFLOW_M2AIA_BENCHMARK_BATCH_SIZE", "256"))
-MAX_THREADS = int(os.getenv("MASSFLOW_M2AIA_BENCHMARK_MAX_THREADS", "16"))
-DEFAULT_IMZML_FILE = "/Users/dre/Desktop/data/original/original.imzML"
+MAX_THREADS = int(os.getenv("MASSFLOW_M2AIA_BENCHMARK_MAX_THREADS", str(os.cpu_count() or 16)))
+BENCHMARK_DATASETS = [
+    ("example", Path("/root/autodl-tmp/data/example.imzML")),
+    ("min", Path("/root/autodl-tmp/data/file_min_profile.imzML")),
+    ("mid", Path("/root/autodl-tmp/data/file_mid_profile.imzML")),
+    ("original", Path("/root/autodl-tmp/data/original.imzML")),
+]
 
 
-def _benchmark_file_path() -> Path:
-    path = Path(os.getenv("MASSFLOW_M2AIA_BENCHMARK_IMZML", DEFAULT_IMZML_FILE)).expanduser()
+@pytest.fixture(scope="module", params=BENCHMARK_DATASETS, ids=[item[0] for item in BENCHMARK_DATASETS])
+def imzml_path(request) -> Path:
+    dataset_name, path = request.param
+    path = path.expanduser()
     if not path.exists():
-        pytest.skip(
-            "Benchmark imzML file not found. Set MASSFLOW_M2AIA_BENCHMARK_IMZML "
-            "to the input .imzML file path."
-        )
+        pytest.skip(f"{dataset_name} imzML file not found: {path}")
     return path
 
 
-@pytest.fixture(scope="module")
-def imzml_path() -> Path:
-    return _benchmark_file_path()
+def _import_m2aia():
+    try:
+        import m2aia as m2
+    except (ImportError, OSError) as exc:
+        pytest.skip(f"m2aia is not available in this environment: {exc}")
+    return m2
 
 
-def _load_m2aia_reader(path: Path, **kwargs):
-    m2 = pytest.importorskip("m2aia")
-    reader = m2.ImzMLReader(str(path), **kwargs)
-    reader.Execute()
-    return reader
-
-
-def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, float]:
+def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, int, float, float]:
     """Read all spectra through MassFlow's direct flat imzML reader."""
     dm = MSDataManagerImzML(filepath=str(path), max_threads=MAX_THREADS)
     try:
@@ -44,36 +44,50 @@ def _read_all_spectra_massflow_flat(path: Path) -> tuple[int, int, float]:
 
         spectrum_count = 0
         point_count = 0
+        mz_point_count = 0
+        mz_sum = 0.0
         intensity_sum = 0.0
 
-        for _, intensity_flat, lengths, _ in dm.flat_generator(
+        for mz_data, intensity_flat, lengths, _ in dm.flat_generator(
             batch_size=BATCH_SIZE,
             include_mz=True,
             max_threads=MAX_THREADS,
         ):
+            logical_points = int(lengths.sum())
             spectrum_count += int(lengths.size)
-            point_count += int(lengths.sum())
+            point_count += logical_points
+            mz_point_count += logical_points
+            if mz_data.size == intensity_flat.size:
+                mz_sum += float(np.sum(mz_data, dtype=np.float64))
+            else:
+                mz_sum += float(np.sum(mz_data, dtype=np.float64)) * int(lengths.size)
             intensity_sum += float(np.sum(intensity_flat, dtype=np.float64))
 
-        return spectrum_count, point_count, intensity_sum
+        return spectrum_count, point_count, mz_point_count, mz_sum, intensity_sum
     finally:
         dm.close()
 
 
-def _read_all_spectra_m2aia(path: Path) -> tuple[int, int, float]:
+def _read_all_spectra_m2aia(m2, path: Path) -> tuple[int, int, int, float, float]:
     """Read all spectra through m2aia without signal processing."""
-    reader = _load_m2aia_reader(path)
+    reader = m2.ImzMLReader(str(path))
 
     spectrum_count = 0
     point_count = 0
+    mz_point_count = 0
+    mz_sum = 0.0
     intensity_sum = 0.0
 
-    for _, _, ys in reader.SpectrumIterator():
+    for _, xs, ys in reader.SpectrumIterator():
+        x = np.asarray(xs, dtype=np.float64)
+        y = np.asarray(ys, dtype=np.float64)
         spectrum_count += 1
-        point_count += int(len(ys))
-        intensity_sum += float(np.sum(ys, dtype=np.float64))
+        point_count += int(y.size)
+        mz_point_count += int(x.size)
+        mz_sum += float(np.sum(x, dtype=np.float64))
+        intensity_sum += float(np.sum(y, dtype=np.float64))
 
-    return spectrum_count, point_count, intensity_sum
+    return spectrum_count, point_count, mz_point_count, mz_sum, intensity_sum
 
 
 class TestReadAllSpectraBenchmark:
@@ -88,15 +102,18 @@ class TestReadAllSpectraBenchmark:
         )
         assert result[0] > 0
         assert result[1] > 0
+        assert result[2] > 0
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     def test_m2aia_read_all_spectra(self, benchmark, imzml_path):
+        m2 = _import_m2aia()
         result = benchmark.pedantic(
             _read_all_spectra_m2aia,
-            args=(imzml_path,),
+            args=(m2, imzml_path),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,
         )
         assert result[0] > 0
         assert result[1] > 0
+        assert result[2] > 0
