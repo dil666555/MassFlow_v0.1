@@ -15,6 +15,7 @@ logger = get_logger("test_align")
 ROUNDS = 2
 ALIGN_UNITS = ["ppm"]
 BINFUN = ["min"]
+THREADS = [1, 2, 4, 8, 16, 32]
 # FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
 # FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
 # FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
@@ -45,7 +46,11 @@ def _peak_align_flat_from_flat_batches(
     flat_batches,
     units: str,
     binfun: str,
+    threads: int,
 ):
+    from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
+    apply_numba_runtime(override_workers=threads)
+
     reference, tolerance = reference_computer(flat_batches, units=units, binfun=binfun)
 
     for mz_flat, intensity_flat, lengths in flat_batches:
@@ -121,14 +126,15 @@ class TestAlign:
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("units", ALIGN_UNITS)
     @pytest.mark.parametrize("binfun", BINFUN)
-    def test_align_flat_speed(self, benchmark, flat_caches, units, binfun):
+    @pytest.mark.parametrize("threads", THREADS)
+    def test_align_flat_speed(self, benchmark, flat_caches, units, binfun, threads):
         """Benchmark flat peak align via peak_align_flat."""
 
         flat_batches = flat_caches
 
         benchmark.pedantic(
             _peak_align_flat_from_flat_batches,
-            args=(flat_batches, units, binfun),
+            args=(flat_batches, units, binfun, threads),
             rounds=ROUNDS,
             iterations=1,
             warmup_rounds=1,

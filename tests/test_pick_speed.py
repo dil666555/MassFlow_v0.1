@@ -11,10 +11,11 @@ logger = get_logger("test_pick")
 
 ROUNDS = 2
 BATCH_PICK_METHODS = ["origin"]
-FLAT_PICK_METHODS = ["quantile", "diff", "sd", "mad"]
-# FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
-# FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
-# FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
+FLAT_PICK_METHODS = ["sd"]
+THREADS = [1, 2, 4, 8, 16, 32]
+FILE_MIN = "/Users/dre/Desktop/data/min/file_min_profile.imzML"
+FILE_MID = "/Users/dre/Desktop/data/mid/file_mid_profile.imzML"
+FILE_MAX = "/Users/dre/Desktop/data/Example_read/example.imzML"
 FILE_ULTRA = "/Users/dre/Desktop/data/original/original.imzML"
 
 
@@ -24,7 +25,11 @@ def _peak_pick_flat_from_flat_batches(
     width: int,
     snr: float,
     return_type: str,
+    threads: int,
 ):
+    from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
+    apply_numba_runtime(override_workers=threads)
+
     for mz_flat, intensity_flat, lengths in flat_batches:
         _ = FlatPreprocess.peak_pick_flat(
             mz_data=mz_flat,
@@ -43,7 +48,7 @@ class TestPick:
             uv run pytest ./tests/test_pick_speed.py -k "test_pick_speed or test_pick_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MAX])
     def ms_raw_data(self, request) -> MSDataManagerImzML:
         """Fixture providing batch-readable data manager cache for pick benchmarks."""
         data_file_path = request.param
@@ -53,7 +58,7 @@ class TestPick:
             pass
         return dm
 
-    @pytest.fixture(scope="module", params=[FILE_ULTRA])
+    @pytest.fixture(scope="module", params=[FILE_MAX])
     def flat_caches(self, request):
         """Fixture providing pre-generated flat arrays for flat pick benchmarks."""
         data_file_path = request.param
@@ -101,7 +106,8 @@ class TestPick:
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", FLAT_PICK_METHODS)
-    def test_pick_flat_speed(self, benchmark, method, flat_caches):
+    @pytest.mark.parametrize("threads", THREADS)
+    def test_pick_flat_speed(self, benchmark, method, flat_caches, threads):
         """Benchmark flat peak pick via peak_pick_flat."""
         logger.info(f"Benchmarking flat peak pick method={method}")
 
@@ -120,6 +126,7 @@ class TestPick:
                 flat_kwargs["width"],
                 flat_kwargs["snr"],
                 flat_kwargs["return_type"],
+                threads,
             ),
             rounds=ROUNDS,
             iterations=1,
