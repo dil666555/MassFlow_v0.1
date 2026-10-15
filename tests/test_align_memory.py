@@ -1,8 +1,10 @@
+import os
 import time
 import pytest
 
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
+from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.helper.peak_align_helper import reference_computer
 from massflow.preprocess.helper.peak_align_helper_v1 import compute_reference
 from massflow.preprocess.preprocessor import Preprocessor
@@ -11,14 +13,14 @@ from massflow.tools.logger import get_logger
 
 logger = get_logger("test_align")
 
-ROUNDS = 5
+ROUNDS = 2
 ALIGN_UNITS = ["ppm"]
 BINFUN = ["min"]
 THREADS = [1, 2, 4, 8, 16, 32]
 # FILE_MIN = "/home/Share_Space/data_local/min/file_min_profile.imzML"
 # FILE_MID = "/home/Share_Space/data_local/mid/file_mid_profile.imzML"
-FILE_MAX = "/home/Share_Space/data_local/Example_read/example.imzML"
-# FILE_ULTRA = "/home/Share_Space/data_local/original/original.imzML"
+FILE_MAX = os.getenv("MASSFLOW_S11_MAX_FILE", "/Users/dre/Desktop/data/example/example.imzML")
+FILE_ULTRA = os.getenv("MASSFLOW_S11_ULTRA_FILE", "/Users/dre/Desktop/data/original/original.imzML")
 
 def _run_peak_align_from_dm_process(
     ms_raw_data: MSDataManagerImzML,
@@ -26,7 +28,7 @@ def _run_peak_align_from_dm_process(
     units: str,
     binfun: str,
 ):
-    reference, tolerance = compute_reference(ms_raw_data, units=units, binfun=binfun)
+    reference, tolerance = compute_reference(ms_raw_data, units=units, binfun=binfun, clear_memory=True)
     tolerance = tolerance * 1e6 if units == "ppm" else tolerance
     batch_kwargs = {
         "reference": reference,
@@ -71,15 +73,15 @@ class TestAlign:
             uv run pytest ./tests/test_align_memory.py -k "test_align_memory or test_align_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MAX])
-    def ms_raw_data(self, request) -> MSDataManagerImzML:
+    @pytest.fixture(scope="module", params=[FILE_MAX, FILE_ULTRA], ids=["max", "ultra"])
+    def ms_raw_data(self, request):
         """Fixture providing batch-readable data manager cache for align benchmarks."""
         data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
-        picked_dm = Preprocessor(dm).peak_pick().start()
-        picked_dm.load_head_data()
-        return picked_dm
+        with MSDataManagerImzML(filepath=data_file_path, max_threads=8) as dm:
+            dm.load_head_data()
+            picked_dm = Preprocessor(dm).peak_pick().start()
+        with picked_dm:
+            yield picked_dm
 
     @pytest.fixture(scope="module")
     def flat_caches(self, ms_raw_data):
@@ -99,6 +101,10 @@ class TestAlign:
     @pytest.mark.parametrize("binfun", BINFUN)
     def test_align_memory(self, benchmark, ms_raw_data, units, binfun):
         """Benchmark batch peak align via dm_process."""
+        benchmark.extra_info.update(
+            batch_size=256, read_threads=ms_raw_data.max_threads,
+            numba_threads=apply_numba_runtime(),
+        )
 
         benchmark.pedantic(
             _run_peak_align_from_dm_process,

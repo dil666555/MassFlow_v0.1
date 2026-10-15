@@ -1,15 +1,17 @@
+import os
 import time
 import pytest
 
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
+from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.preprocessor import Preprocessor
 from massflow.tools.dm_process import dm_process
 from massflow.tools.logger import get_logger
 
 logger = get_logger("test_pick")
 
-ROUNDS = 5
+ROUNDS = 2
 BATCH_PICK_METHODS = ["origin"]
 FLAT_PICK_METHODS = ["sd"]
 NUMBA_THREADS = [1, 2, 4, 8, 16, 32]
@@ -20,8 +22,8 @@ FLAT_PICK_CASES = [
 ]
 # FILE_MIN = "/home/Share_Space/data_local/min/file_min_profile.imzML"
 # FILE_MID = "/home/Share_Space/data_local/mid/file_mid_profile.imzML"
-FILE_MAX = "/home/Share_Space/data_local/Example_read/example.imzML"
-# FILE_ULTRA = "/home/Share_Space/data_local/original/original.imzML"
+FILE_MAX = os.getenv("MASSFLOW_S11_MAX_FILE", "/Users/dre/Desktop/data/example/example.imzML")
+FILE_ULTRA = os.getenv("MASSFLOW_S11_ULTRA_FILE", "/Users/dre/Desktop/data/original/original.imzML")
 TEMP_DIR = "./temp"
 
 
@@ -86,19 +88,23 @@ class TestPick:
             uv run pytest ./tests/test_pick_memory.py -k "test_pick_memory or test_pick_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MAX])
-    def ms_raw_data(self, request) -> MSDataManagerImzML:
+    @pytest.fixture(scope="module", params=[FILE_MAX, FILE_ULTRA], ids=["max", "ultra"])
+    def ms_raw_data(self, request):
         """Fixture providing batch-readable data manager cache for pick benchmarks."""
         data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
-        return dm
+        with MSDataManagerImzML(filepath=data_file_path, max_threads=8) as dm:
+            dm.load_head_data()
+            yield dm
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", BATCH_PICK_METHODS)
     def test_pick_memory(self, benchmark, method, ms_raw_data):
         """Benchmark batch peak pick via dm_process."""
         logger.info(f"Benchmarking batch peak pick method={method}")
+        benchmark.extra_info.update(
+            batch_size=256, read_threads=ms_raw_data.max_threads,
+            numba_threads=apply_numba_runtime(),
+        )
 
         benchmark.pedantic(
             _run_peak_pick_from_dm_process,

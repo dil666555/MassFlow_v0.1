@@ -1,0 +1,873 @@
+{
+    "machine_info": {
+        "node": "dredeMacBook-Air.local",
+        "processor": "arm",
+        "machine": "arm64",
+        "python_compiler": "Clang 22.1.3 ",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.12.13",
+        "python_version": "3.12.13",
+        "python_build": [
+            "main",
+            "May 10 2026 19:20:41"
+        ],
+        "release": "27.0.0",
+        "system": "Darwin",
+        "cpu": {
+            "python_version": "3.12.13.final.0 (64 bit)",
+            "cpuinfo_version": [
+                9,
+                0,
+                0
+            ],
+            "cpuinfo_version_string": "9.0.0",
+            "arch": "ARM_8",
+            "bits": 64,
+            "count": 10,
+            "arch_string_raw": "arm64",
+            "brand_raw": "Apple M5"
+        }
+    },
+    "commit_info": {
+        "id": "b918f4577146d931ec1fffbda64858b86eb8e013",
+        "time": "2026-10-15T22:32:03+08:00",
+        "author_time": "2026-10-15T22:32:03+08:00",
+        "dirty": true,
+        "project": "MassFlow_v0.1",
+        "branch": "test/time_and_memory_of_three_version"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_baseline_memory[max-locmin]",
+            "fullname": "tests/test_baseline_memory.py::TestBaseline::test_baseline_memory[max-locmin]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "locmin"
+            },
+            "param": "max-locmin",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 34.136623833997874,
+                "max": 34.18902133400843,
+                "mean": 34.16282258400315,
+                "stddev": 0.037050627574686724,
+                "rounds": 2,
+                "median": 34.16282258400315,
+                "iqr": 0.05239750001055654,
+                "q1": 34.136623833997874,
+                "q3": 34.18902133400843,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 34.136623833997874,
+                "hd15iqr": 34.18902133400843,
+                "ops": 0.029271586021356828,
+                "total": 68.3256451680063,
+                "data": [
+                    34.18902133400843,
+                    34.136623833997874
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_baseline_memory[max-snip]",
+            "fullname": "tests/test_baseline_memory.py::TestBaseline::test_baseline_memory[max-snip]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "snip"
+            },
+            "param": "max-snip",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 8.592622124997433,
+                "max": 8.613025083002867,
+                "mean": 8.60282360400015,
+                "stddev": 0.014427069961906668,
+                "rounds": 2,
+                "median": 8.60282360400015,
+                "iqr": 0.020402958005433902,
+                "q1": 8.592622124997433,
+                "q3": 8.613025083002867,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 8.592622124997433,
+                "hd15iqr": 8.613025083002867,
+                "ops": 0.11624090485070726,
+                "total": 17.2056472080003,
+                "data": [
+                    8.613025083002867,
+                    8.592622124997433
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_baseline_memory[ultra-locmin]",
+            "fullname": "tests/test_baseline_memory.py::TestBaseline::test_baseline_memory[ultra-locmin]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "locmin"
+            },
+            "param": "ultra-locmin",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 35.10109837500204,
+                "max": 35.42325770801108,
+                "mean": 35.26217804150656,
+                "stddev": 0.22780104899322734,
+                "rounds": 2,
+                "median": 35.26217804150656,
+                "iqr": 0.32215933300904,
+                "q1": 35.10109837500204,
+                "q3": 35.42325770801108,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 35.10109837500204,
+                "hd15iqr": 35.42325770801108,
+                "ops": 0.028358996963344568,
+                "total": 70.52435608301312,
+                "data": [
+                    35.42325770801108,
+                    35.10109837500204
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_baseline_memory[ultra-snip]",
+            "fullname": "tests/test_baseline_memory.py::TestBaseline::test_baseline_memory[ultra-snip]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "snip"
+            },
+            "param": "ultra-snip",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 27.121596958008013,
+                "max": 30.397525084001245,
+                "mean": 28.75956102100463,
+                "stddev": 2.316430992569553,
+                "rounds": 2,
+                "median": 28.75956102100463,
+                "iqr": 3.2759281259932322,
+                "q1": 27.121596958008013,
+                "q3": 30.397525084001245,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 27.121596958008013,
+                "hd15iqr": 30.397525084001245,
+                "ops": 0.03477104533235563,
+                "total": 57.51912204200926,
+                "data": [
+                    30.397525084001245,
+                    27.121596958008013
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_normalization_memory[max-tic]",
+            "fullname": "tests/test_normalization_memory.py::TestNormalization::test_normalization_memory[max-tic]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "tic"
+            },
+            "param": "max-tic",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 4.231703541998286,
+                "max": 4.267766167002264,
+                "mean": 4.249734854500275,
+                "stddev": 0.02550012668770082,
+                "rounds": 2,
+                "median": 4.249734854500275,
+                "iqr": 0.03606262500397861,
+                "q1": 4.231703541998286,
+                "q3": 4.267766167002264,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 4.231703541998286,
+                "hd15iqr": 4.267766167002264,
+                "ops": 0.23530879789854317,
+                "total": 8.49946970900055,
+                "data": [
+                    4.267766167002264,
+                    4.231703541998286
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_normalization_memory[max-rms]",
+            "fullname": "tests/test_normalization_memory.py::TestNormalization::test_normalization_memory[max-rms]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "rms"
+            },
+            "param": "max-rms",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 5.289769666007487,
+                "max": 5.448959916990134,
+                "mean": 5.3693647914988105,
+                "stddev": 0.11256450596861803,
+                "rounds": 2,
+                "median": 5.3693647914988105,
+                "iqr": 0.15919025098264683,
+                "q1": 5.289769666007487,
+                "q3": 5.448959916990134,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 5.289769666007487,
+                "hd15iqr": 5.448959916990134,
+                "ops": 0.1862417695261228,
+                "total": 10.738729582997621,
+                "data": [
+                    5.448959916990134,
+                    5.289769666007487
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_normalization_memory[ultra-tic]",
+            "fullname": "tests/test_normalization_memory.py::TestNormalization::test_normalization_memory[ultra-tic]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "tic"
+            },
+            "param": "ultra-tic",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 27.616490999993403,
+                "max": 30.901246292007272,
+                "mean": 29.258868646000337,
+                "stddev": 2.3226727415214055,
+                "rounds": 2,
+                "median": 29.258868646000337,
+                "iqr": 3.2847552920138696,
+                "q1": 27.616490999993403,
+                "q3": 30.901246292007272,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 27.616490999993403,
+                "hd15iqr": 30.901246292007272,
+                "ops": 0.034177671464296316,
+                "total": 58.517737292000675,
+                "data": [
+                    30.901246292007272,
+                    27.616490999993403
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_normalization_memory[ultra-rms]",
+            "fullname": "tests/test_normalization_memory.py::TestNormalization::test_normalization_memory[ultra-rms]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "rms"
+            },
+            "param": "ultra-rms",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 17.323823500002618,
+                "max": 31.649980540998513,
+                "mean": 24.486902020500565,
+                "stddev": 10.130122792031601,
+                "rounds": 2,
+                "median": 24.486902020500565,
+                "iqr": 14.326157040995895,
+                "q1": 17.323823500002618,
+                "q3": 31.649980540998513,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 17.323823500002618,
+                "hd15iqr": 31.649980540998513,
+                "ops": 0.040838159076341904,
+                "total": 48.97380404100113,
+                "data": [
+                    17.323823500002618,
+                    31.649980540998513
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_align_memory[max-min-ppm]",
+            "fullname": "tests/test_align_memory.py::TestAlign::test_align_memory[max-min-ppm]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "binfun": "min",
+                "units": "ppm"
+            },
+            "param": "max-min-ppm",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 17.550730957998894,
+                "max": 17.609335165994707,
+                "mean": 17.5800330619968,
+                "stddev": 0.0414394328799065,
+                "rounds": 2,
+                "median": 17.5800330619968,
+                "iqr": 0.05860420799581334,
+                "q1": 17.550730957998894,
+                "q3": 17.609335165994707,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 17.550730957998894,
+                "hd15iqr": 17.609335165994707,
+                "ops": 0.05688271441091457,
+                "total": 35.1600661239936,
+                "data": [
+                    17.550730957998894,
+                    17.609335165994707
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_align_memory[ultra-min-ppm]",
+            "fullname": "tests/test_align_memory.py::TestAlign::test_align_memory[ultra-min-ppm]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "binfun": "min",
+                "units": "ppm"
+            },
+            "param": "ultra-min-ppm",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 14.935486417001812,
+                "max": 14.939370166990557,
+                "mean": 14.937428291996184,
+                "stddev": 0.0027462259534747437,
+                "rounds": 2,
+                "median": 14.937428291996184,
+                "iqr": 0.0038837499887449667,
+                "q1": 14.935486417001812,
+                "q3": 14.939370166990557,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 14.935486417001812,
+                "hd15iqr": 14.939370166990557,
+                "ops": 0.0669459280708864,
+                "total": 29.87485658399237,
+                "data": [
+                    14.935486417001812,
+                    14.939370166990557
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[max-ma]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[max-ma]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "ma"
+            },
+            "param": "max-ma",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 5.132538457997725,
+                "max": 5.638671791006345,
+                "mean": 5.385605124502035,
+                "stddev": 0.3578903119549442,
+                "rounds": 2,
+                "median": 5.385605124502035,
+                "iqr": 0.50613333300862,
+                "q1": 5.132538457997725,
+                "q3": 5.638671791006345,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 5.132538457997725,
+                "hd15iqr": 5.638671791006345,
+                "ops": 0.18568015606091473,
+                "total": 10.77121024900407,
+                "data": [
+                    5.132538457997725,
+                    5.638671791006345
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[max-gaussian]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[max-gaussian]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "gaussian"
+            },
+            "param": "max-gaussian",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 6.126469958006055,
+                "max": 6.165518750000047,
+                "mean": 6.145994354003051,
+                "stddev": 0.027611665616094336,
+                "rounds": 2,
+                "median": 6.145994354003051,
+                "iqr": 0.03904879199399147,
+                "q1": 6.126469958006055,
+                "q3": 6.165518750000047,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 6.126469958006055,
+                "hd15iqr": 6.165518750000047,
+                "ops": 0.16270760147195273,
+                "total": 12.291988708006102,
+                "data": [
+                    6.165518750000047,
+                    6.126469958006055
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[max-savgol]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[max-savgol]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "savgol"
+            },
+            "param": "max-savgol",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 6.32609100000991,
+                "max": 6.466959499986842,
+                "mean": 6.396525249998376,
+                "stddev": 0.09960907158926569,
+                "rounds": 2,
+                "median": 6.396525249998376,
+                "iqr": 0.14086849997693207,
+                "q1": 6.32609100000991,
+                "q3": 6.466959499986842,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 6.32609100000991,
+                "hd15iqr": 6.466959499986842,
+                "ops": 0.1563348788469574,
+                "total": 12.793050499996752,
+                "data": [
+                    6.32609100000991,
+                    6.466959499986842
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[ultra-ma]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[ultra-ma]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "ma"
+            },
+            "param": "ultra-ma",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 16.963568999999552,
+                "max": 31.724586292009917,
+                "mean": 24.344077646004735,
+                "stddev": 10.437615424392417,
+                "rounds": 2,
+                "median": 24.344077646004735,
+                "iqr": 14.761017292010365,
+                "q1": 16.963568999999552,
+                "q3": 31.724586292009917,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 16.963568999999552,
+                "hd15iqr": 31.724586292009917,
+                "ops": 0.04107775264856323,
+                "total": 48.68815529200947,
+                "data": [
+                    31.724586292009917,
+                    16.963568999999552
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[ultra-gaussian]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[ultra-gaussian]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "gaussian"
+            },
+            "param": "ultra-gaussian",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 32.99636195799394,
+                "max": 33.102895624993835,
+                "mean": 33.04962879149389,
+                "stddev": 0.07533067836029471,
+                "rounds": 2,
+                "median": 33.04962879149389,
+                "iqr": 0.1065336669998942,
+                "q1": 32.99636195799394,
+                "q3": 33.102895624993835,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 32.99636195799394,
+                "hd15iqr": 33.102895624993835,
+                "ops": 0.03025752592590008,
+                "total": 66.09925758298778,
+                "data": [
+                    33.102895624993835,
+                    32.99636195799394
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_nr_memory[ultra-savgol]",
+            "fullname": "tests/test_noise_reduction_memory.py::TestNoiseReductionAPI::test_nr_memory[ultra-savgol]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "savgol"
+            },
+            "param": "ultra-savgol",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 30.886658250004984,
+                "max": 32.69407008300186,
+                "mean": 31.790364166503423,
+                "stddev": 1.2780331635088995,
+                "rounds": 2,
+                "median": 31.790364166503423,
+                "iqr": 1.807411832996877,
+                "q1": 30.886658250004984,
+                "q3": 32.69407008300186,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 30.886658250004984,
+                "hd15iqr": 32.69407008300186,
+                "ops": 0.03145607249927859,
+                "total": 63.580728333006846,
+                "data": [
+                    32.69407008300186,
+                    30.886658250004984
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_pick_memory[max-origin]",
+            "fullname": "tests/test_pick_memory.py::TestPick::test_pick_memory[max-origin]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/example/example.imzML",
+                "method": "origin"
+            },
+            "param": "max-origin",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 39.156208082989906,
+                "max": 39.204428624987486,
+                "mean": 39.180318353988696,
+                "stddev": 0.034097072238979426,
+                "rounds": 2,
+                "median": 39.180318353988696,
+                "iqr": 0.04822054199757986,
+                "q1": 39.156208082989906,
+                "q3": 39.204428624987486,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 39.156208082989906,
+                "hd15iqr": 39.204428624987486,
+                "ops": 0.02552301875051499,
+                "total": 78.36063670797739,
+                "data": [
+                    39.204428624987486,
+                    39.156208082989906
+                ],
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_pick_memory[ultra-origin]",
+            "fullname": "tests/test_pick_memory.py::TestPick::test_pick_memory[ultra-origin]",
+            "params": {
+                "ms_raw_data": "/Users/dre/Desktop/data/original/original.imzML",
+                "method": "origin"
+            },
+            "param": "ultra-origin",
+            "extra_info": {
+                "batch_size": 256,
+                "read_threads": 8,
+                "numba_threads": 4
+            },
+            "options": {
+                "disable_gc": true,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 52.70989908398769,
+                "max": 52.8117623750004,
+                "mean": 52.760830729494046,
+                "stddev": 0.07202822382906263,
+                "rounds": 2,
+                "median": 52.760830729494046,
+                "iqr": 0.1018632910127053,
+                "q1": 52.70989908398769,
+                "q3": 52.8117623750004,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 52.70989908398769,
+                "hd15iqr": 52.8117623750004,
+                "ops": 0.018953454412555068,
+                "total": 105.52166145898809,
+                "data": [
+                    52.70989908398769,
+                    52.8117623750004
+                ],
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2026-10-15T16:06:04.663242+00:00",
+    "version": "5.2.3"
+}

@@ -1,7 +1,9 @@
+import os
 import time
 import pytest
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
+from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.preprocessor import Preprocessor
 from massflow.tools.dm_process import dm_process
 from massflow.tools.logger import get_logger
@@ -13,8 +15,8 @@ BATCH_NR_METHODS = ["ma", "gaussian", "savgol"]
 FLAT_NR_METHODS = ["ma_numba", "gaussian_numba", "savgol_numba"]
 # FILE_MIN = '/Users/dre/Desktop/data/test_data_profile/file_min_profile/file_min_profile.imzML'
 FILE_MID = '/Users/dre/Desktop/data/mid/file_mid_profile.imzml'
-# FILE_MAX = '/Users/dre/Desktop/data/Example_read/example.imzML'
-# FILE_ULTRA = '/Users/dre/Desktop/data/original/original.imzML'
+FILE_MAX = os.getenv("MASSFLOW_S11_MAX_FILE", "/Users/dre/Desktop/data/example/example.imzML")
+FILE_ULTRA = os.getenv("MASSFLOW_S11_ULTRA_FILE", "/Users/dre/Desktop/data/original/original.imzML")
 TEMP_DIR = "./temp"
 
 
@@ -57,13 +59,13 @@ class TestNoiseReductionAPI:
         uv run  pytest ./tests/test_noise_reduction.py -k "test_nr_speed or test_nr_flat_speed" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MID])
-    def ms_raw_data(self, request) -> MSDataManagerImzML:
+    @pytest.fixture(scope="module", params=[FILE_MAX, FILE_ULTRA], ids=["max", "ultra"])
+    def ms_raw_data(self, request):
         """Fixture providing MSDataManagerImzML instance with fully initialized spectra for noise reduction tests."""
         data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
-        return dm
+        with MSDataManagerImzML(filepath=data_file_path, max_threads=8) as dm:
+            dm.load_head_data()
+            yield dm
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", BATCH_NR_METHODS)
@@ -75,6 +77,10 @@ class TestNoiseReductionAPI:
     ):
         """Test noise reduction speed for different methods."""
         logger.info(f"Benchmarking noise reduction method={method}")
+        benchmark.extra_info.update(
+            batch_size=256, read_threads=ms_raw_data.max_threads,
+            numba_threads=apply_numba_runtime(),
+        )
 
         benchmark.pedantic(
             _run_noise_reduction_from_dm_process,

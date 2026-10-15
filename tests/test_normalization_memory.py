@@ -1,9 +1,11 @@
+import os
 import time
 import numpy as np
 import pytest
 
 from massflow.data_manager import MSDataManagerImzML
 from massflow.preprocess import BatchPreprocess
+from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.preprocessor import Preprocessor
 from massflow.tools.dm_process import dm_process
 from massflow.tools.logger import get_logger
@@ -16,8 +18,8 @@ FLAT_NORM_METHODS = ["tic_numba", "rms_numba", "ref_numba"]
 THREADS = [1, 4, 8, 12, 16, 18]
 FILE_MIN = "/home/Share_Space/data_local/min/file_min_profile.imzML"
 FILE_MID = "/home/Share_Space/data_local/mid/file_mid_profile.imzml"
-FILE_MAX = "/home/Share_Space/data_local/Example_read/example.imzML"
-FILE_ULTRA = "/home/Share_Space/data_local/original/brainSL7 CS-2-DHB+30um 380-240 70-1050 70000 -24-K3.7.imzML"
+FILE_MAX = os.getenv("MASSFLOW_S11_MAX_FILE", "/Users/dre/Desktop/data/example/example.imzML")
+FILE_ULTRA = os.getenv("MASSFLOW_S11_ULTRA_FILE", "/Users/dre/Desktop/data/original/original.imzML")
 TEMP_DIR = "./temp"
 
 def _resolve_ref_inputs(ms_raw_data: MSDataManagerImzML) -> tuple[np.ndarray, float]:
@@ -87,19 +89,23 @@ class TestNormalization:
             uv run pytest ./tests/test_normalization_memory.py -k "test_normalization_memory or test_normalization_flat_memory" -q
     """
 
-    @pytest.fixture(scope="module", params=[FILE_MID])
-    def ms_raw_data(self, request) -> MSDataManagerImzML:
+    @pytest.fixture(scope="module", params=[FILE_MAX, FILE_ULTRA], ids=["max", "ultra"])
+    def ms_raw_data(self, request):
         """Fixture providing batch-readable data manager cache for normalization benchmarks."""
         data_file_path = request.param
-        dm = MSDataManagerImzML(filepath=data_file_path)
-        dm.load_head_data()
-        return dm
+        with MSDataManagerImzML(filepath=data_file_path, max_threads=8) as dm:
+            dm.load_head_data()
+            yield dm
 
     @pytest.mark.benchmark(timer=time.perf_counter)
     @pytest.mark.parametrize("method", BATCH_NORM_METHODS)
     def test_normalization_memory(self, benchmark, method, ms_raw_data):
         """Benchmark batch normalization via dm_process."""
         logger.info(f"Benchmarking batch normalization method={method}")
+        benchmark.extra_info.update(
+            batch_size=256, read_threads=ms_raw_data.max_threads,
+            numba_threads=apply_numba_runtime(),
+        )
 
         benchmark.pedantic(
             _run_normalization_from_dm_process,
