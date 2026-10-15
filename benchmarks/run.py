@@ -48,7 +48,7 @@ def environment():
         "host": platform.node(), "system": platform.platform(),
         "machine": platform.machine(), "cpu": platform.processor(),
         "logical_cpus": os.cpu_count(), "ram_bytes": psutil.virtual_memory().total,
-        "python": sys.version, "python_executable": sys.executable,
+        "python": sys.version, "python_executable": str(Path(sys.executable).resolve()),
         "packages": {p: version(p) for p in ("numpy", "scipy", "numba", "pyimzml", "psutil")},
         "R": json.loads(command_output(["Rscript", "--vanilla", str(HERE / "cardinal_bench.R"), "--probe"])),
         "thread_env": {k: os.environ[k] for k in keys},
@@ -66,7 +66,7 @@ def source_hash():
 
 
 def inspect_input(path):
-    """Parse headers and inspect only m/z endpoints; never load all intensities."""
+    """Parse headers and read only the first m/z axis for the original ref rule."""
     import numpy as np
     from pyimzml.ImzMLParser import ImzMLParser
 
@@ -77,21 +77,13 @@ def inspect_input(path):
     parser = ImzMLParser(str(path))
     try:
         dtype = np.dtype(parser.mzPrecision)
-        # Shared m/z axes are read once, not once per pixel.
-        axes = dict(zip(parser.mzOffsets, parser.mzLengths))
-        lower, upper = [], []
         with ibd.open("rb") as f:
             uuid = f.read(16).hex()
-            for offset, length in axes.items():
-                if length == 0:
-                    raise ValueError(f"Empty m/z axis in {path}")
-                f.seek(offset)
-                lower.append(float(np.frombuffer(f.read(dtype.itemsize), dtype=dtype)[0]))
-                f.seek(offset + (length - 1) * dtype.itemsize)
-                upper.append(float(np.frombuffer(f.read(dtype.itemsize), dtype=dtype)[0]))
-        lo, hi = max(lower), min(upper)
-        if not lo <= hi:
-            raise ValueError(f"No common m/z interval for reference normalization: {path}")
+            length = parser.mzLengths[0]
+            if length == 0:
+                raise ValueError(f"Empty first m/z axis in {path}")
+            f.seek(parser.mzOffsets[0])
+            mz_axis = np.frombuffer(f.read(length * dtype.itemsize), dtype=dtype)
         return {
             "path": str(path), "ibd_path": str(ibd), "ibd_uuid": uuid,
             "imzml_bytes": path.stat().st_size, "ibd_bytes": ibd.stat().st_size,
@@ -99,9 +91,8 @@ def inspect_input(path):
             "spectra": len(parser.coordinates),
             "intensity_points": sum(parser.intensityLengths),
             "mz_dtype": parser.mzPrecision, "intensity_dtype": parser.intensityPrecision,
-            "reference": (lo + hi) / 2,
-            # Match Cardinal's nearest-reference selection without a 0.1-Da cutoff.
-            "ref_tolerance": max(upper) - min(lower) + 1.0,
+            "reference": float(mz_axis[(length - 1) // 2]),
+            "ref_tolerance": 0.1,
         }
     finally:
         parser.m.close()
@@ -199,9 +190,12 @@ def launch(job, directory):
     if job["backend"] == "cardinal":
         command = ["Rscript", "--vanilla", str(HERE / "cardinal_bench.R"), str(directory / "job.json")]
     else:
-        command = [sys.executable, str(HERE / "python_bench.py"), str(directory / "job.json")]
+        command = [sys.executable, "-m", "pytest", str(HERE / "python_bench.py"),
+                   "--benchmark-only", "--benchmark-columns=min,mean,median,max,stddev,rounds",
+                   f"--benchmark-json={directory / 'benchmark.json'}", "-q"]
+    worker_env = dict(os.environ, MASSFLOW_BENCHMARK_JOB=str(directory / "job.json"))
     with (directory / "worker.log").open("w") as log:
-        process = subprocess.Popen(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(command, cwd=ROOT, env=worker_env, stdout=log, stderr=subprocess.STDOUT)
         try:
             if job["mode"] == "memory":
                 memory = []
@@ -234,9 +228,36 @@ def launch(job, directory):
                 process.terminate()
                 process.wait()
     result = read_json(directory / "worker.json")
+    if job["backend"] != "cardinal":
+        benchmarks = read_json(directory / "benchmark.json")["benchmarks"]
+        result["elapsed_seconds"] = benchmarks[0]["stats"]["data"]
     if job["mode"] == "memory":
         result["memory"] = memory
     return result
+
+
+def make_job(run, manifest, group, ds, case):
+    backend = group.split("-", 1)[0]
+    info = manifest["inputs"][ds]
+    if case["id"] == "align" and backend != "cardinal":
+        prepared = read_json(run / "alignment" / ds / "prepared.json")
+        if prepared["campaign_id"] != manifest["id"]:
+            raise ValueError(f"Wrong alignment input campaign for {ds}")
+        info = prepared["input"]
+        file_identity(info)
+    scope = "cache_core" if group.endswith("core") and ds in ("min", "mid") else "pipeline"
+    if backend == "cardinal":
+        scope = "cardinal_process"
+    return {
+        "campaign_id": manifest["id"], "group": group,
+        "save_path": str(run / group / f'{ds}-{case["id"]}.json'),
+        "scratch": str(run / "scratch" / group / f'{ds}-{case["id"]}'),
+        "backend": backend, "mode": "memory" if group.endswith("memory") else "time",
+        "scope": scope, "case": case, "config": manifest["config"],
+        "dataset": ds, "input": info["path"], "expected_spectra": info["spectra"],
+        "reference": manifest["inputs"][ds]["reference"],
+        "ref_tolerance": manifest["inputs"][ds]["ref_tolerance"],
+    }
 
 
 def run_group(run, manifest, group, datasets, case_ids, resume):
@@ -263,22 +284,8 @@ def run_group(run, manifest, group, datasets, case_ids, resume):
                     print("Skip", path.name, flush=True)
                     continue
                 raise FileExistsError(f"{path} exists; add --resume to skip completed cases.")
-            info = manifest["inputs"][ds]
-            if case["id"] == "align":
-                prepared = read_json(run / "alignment" / ds / "prepared.json")
-                if prepared["campaign_id"] != manifest["id"]:
-                    raise ValueError(f"Wrong alignment input campaign for {ds}")
-                info = prepared["input"]
-                file_identity(info)
-            scope = "cache_core" if group.endswith("core") and ds in ("min", "mid") else "pipeline"
-            job = {
-                "backend": backend, "mode": mode, "scope": scope, "case": case,
-                "config": cfg, "dataset": ds, "input": info["path"],
-                "expected_spectra": info["spectra"],
-                "reference": manifest["inputs"][ds]["reference"],
-                "ref_tolerance": manifest["inputs"][ds]["ref_tolerance"],
-            }
-            print(f'{group}: {ds} / {case["id"]} [{scope}]', flush=True)
+            job = make_job(run, manifest, group, ds, case)
+            print(f'{group}: {ds} / {case["id"]} [{job["scope"]}]', flush=True)
             # Each case has its own process: one warmup, then two measurements.
             directory = run / "logs" / group / f'{ds}-{case["id"]}'
             # Remove only an incomplete worker's control files before retrying.
@@ -289,7 +296,8 @@ def run_group(run, manifest, group, datasets, case_ids, resume):
                 raise ValueError("Unexpected Numba thread count")
             record = {"campaign_id": manifest["id"], "dataset": ds,
                       "case": case["id"], "stage": case["stage"], "backend": backend,
-                      "scope": scope, "mode": mode, "parameters": parameters_for_record(job),
+                      "scope": job["scope"], "mode": mode,
+                      "parameters": workers[0].get("parameters", parameters_for_record(job)),
                       "workers": workers}
             values = ([m["sampled_peak_rss_mib"] for m in workers[0]["memory"]] if mode == "memory"
                       else workers[0]["elapsed_seconds"])
@@ -301,7 +309,7 @@ def run_group(run, manifest, group, datasets, case_ids, resume):
 
 def parameters_for_record(job):
     p = dict(job["case"][job["backend"]])
-    if job["case"]["id"] == "reference":
+    if job["case"]["id"] == "reference" and job["backend"] != "cardinal":
         p["ref"] = job["reference"]
         if job["backend"] == "numba":
             p["ref_tolerance"] = job["ref_tolerance"]

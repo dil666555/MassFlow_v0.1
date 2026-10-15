@@ -1,22 +1,19 @@
-"""One benchmark case; launched by run.py, never by pytest."""
+"""Python/Numba benchmarks using the original pytest-benchmark entry pattern."""
 from contextlib import ExitStack
-import gc
 import json
 from pathlib import Path
-import sys
-import tempfile
 import time
 
+import pytest
 from numba import get_num_threads, threading_layer
 from massflow.data_manager import MSDataManagerImzML
-from massflow.module import MassSpectrumSet
 from massflow.preprocess import BatchPreprocess
 from massflow.preprocess.flat_pre_fun import FlatPreprocess
 from massflow.preprocess.helper.peak_align_helper import reference_computer
-from massflow.preprocess.helper.peak_align_helper_v1 import compute_reference
 from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.preprocessor import Preprocessor
-from massflow.tools.infer_spectrum_type import set_spectrum_type_metadata
+from massflow.tools.dm_process import dm_process
+from peak_align_numpy import compute_reference
 
 BATCH_FUNCTIONS = {
     "baseline": BatchPreprocess.baseline_correction_batch,
@@ -54,18 +51,22 @@ def parameters(job):
 
 
 # ---------------------------------------------------------------------------
-# Pipeline: input open/read, one operator, output finalization
+# Pipeline operators; input setup is performed by the pytest fixture
 # ---------------------------------------------------------------------------
-def run_pipeline(job, stack, temp_dir):
-    dm = open_input(job, stack)
+def run_pipeline(job, stack, temp_dir, dm=None, reference_batches=None):
+    if dm is None:
+        dm = open_input(job, stack)
     kwargs = parameters(job)
     stage = job["case"]["stage"]
     details = {}
     if stage == "align":
-        reference, tolerance = compute_reference(
-            dm, **kwargs, clear_memory=True,
-            batch_size=job["config"]["batch_size"],
-        )
+        if job["backend"] == "python":
+            reference, tolerance = compute_reference(
+                dm, **kwargs, clear_memory=True,
+                batch_size=job["config"]["batch_size"],
+            )
+        else:
+            reference, tolerance = reference_computer(reference_batches, **kwargs)
         # Both reference builders return fractional tolerance. The direct flat
         # API does not convert ppm numbers; use relative units at every boundary.
         details = {"reference_length": len(reference), "tolerance_relative": tolerance}
@@ -74,25 +75,17 @@ def run_pipeline(job, stack, temp_dir):
     if job["backend"] == "numba":
         pre = Preprocessor(
             dm, batch_size=job["config"]["batch_size"],
-            queue_ab_size=1, queue_bc_size=1, keep_order=True,
+            queue_ab_size=1, queue_bc_size=1,
             temp_dir=temp_dir, numba_max_threads=job["config"]["numba_threads"],
         )
         out = getattr(pre, PIPELINE_METHODS[stage])(**kwargs).start()
         stack.callback(out.close)
     else:
-        # Mirror dm_process, setting output spectrum metadata before opening writer.
-        out = MSDataManagerImzML(MassSpectrumSet(), temp_dir=temp_dir)
+        out = dm_process(
+            dm, job["config"]["batch_size"], BATCH_FUNCTIONS[stage], kwargs,
+            temp_dir, numba_max_threads=job["config"]["numba_threads"],
+        )
         stack.callback(out.close)
-        out.copy_meta(dm)
-        output_type = "centroid" if stage in ("pick", "align") else "profile"
-        set_spectrum_type_metadata(out.ms.meta, output_type)
-        writer = out.writer
-        for batch in dm.batch_generator(batch_size=job["config"]["batch_size"]):
-            processed = BATCH_FUNCTIONS[stage](batch_spectra=batch, **kwargs)
-            dm.clear_batch_data_memory(batch)
-            out.swap_batch_data_out2disk(processed, writer)
-        out.close_writer()
-        out.load_head_data()
     return out, len(dm.ms), details
 
 
@@ -172,49 +165,67 @@ def memory_marker(job, name, round_number):
         time.sleep(0.005)
 
 
-def main():
-    job = json.loads(Path(sys.argv[1]).read_text())
+@pytest.fixture
+def prepared_input(job):
     cfg = job["config"]
     apply_numba_runtime(override_workers=cfg["numba_threads"])
     scratch = Path(job["scratch"])
     scratch.mkdir(parents=True, exist_ok=True)
-    elapsed = []
-    outputs = []
-    # Only Min/Mid core jobs may allocate a complete input cache.
     with ExitStack() as cache_stack:
         if job["scope"] == "cache_core":
             dm, batches = cache_input(job, cache_stack)
-        count = cfg["rounds"]
-        for index in range(cfg["warmup"] + count):
-            measured = index >= cfg["warmup"]
-            with tempfile.TemporaryDirectory(dir=scratch) as tmp, ExitStack() as stack:
-                gc.collect()
-                if measured and job["mode"] == "memory":
-                    memory_marker(job, "ready", index - cfg["warmup"] + 1)
-                # GC remains enabled in both Python and R timed calls.
-                start = time.perf_counter()
-                if job["scope"] == "cache_core":
-                    details = run_core(job, dm, batches)
-                else:
-                    out, expected, details = run_pipeline(job, stack, tmp)
-                seconds = time.perf_counter() - start
-                if measured and job["mode"] == "memory":
-                    memory_marker(job, "done", index - cfg["warmup"] + 1)
-                if measured:
-                    elapsed.append(seconds)
-                    if job["scope"] != "cache_core":
-                        outputs.append({**output_info(out, expected), **details})
-                    else:
-                        outputs.append(details)
-                # Close managers and delete output files only after stopping timer.
-            if job["scope"] != "cache_core":
-                del out  # A warmup manager must not remain alive in measured runs.
+        else:
+            dm = open_input(job, cache_stack)
+            batches = None
+            if job["backend"] == "numba" and job["case"]["id"] == "align":
+                # Match the original flat_caches fixture on picked spectra.
+                batches = [(mz, intensity, lengths)
+                           for mz, intensity, lengths, _ in dm.flat_generator(
+                               batch_size=cfg["batch_size"], include_mz=True)]
+        yield dm, batches
+
+
+@pytest.mark.benchmark(timer=time.perf_counter)
+def test_operator(benchmark, job, prepared_input):
+    dm, batches = prepared_input
+    cfg = job["config"]
+
+    def target():
+        if job["scope"] == "cache_core":
+            return run_core(job, dm, batches)
+        with ExitStack() as stack:
+            _, _, details = run_pipeline(job, stack, job["scratch"], dm, batches)
+        # As in the original memory.py targets, output close is inside timing.
+        return details
+
+    timed_target = target
+    if job["mode"] == "memory":
+        calls = 0
+
+        def measured_target():
+            nonlocal calls
+            calls += 1
+            round_number = calls - cfg["warmup"]
+            if round_number > 0:
+                memory_marker(job, "ready", round_number)
+            details = target()
+            if round_number > 0:
+                memory_marker(job, "done", round_number)
+            return details
+
+        timed_target = measured_target
+    details = benchmark.pedantic(
+        timed_target, rounds=cfg["rounds"], iterations=1,
+        warmup_rounds=cfg["warmup"],
+    )
     result = {
-        "elapsed_seconds": elapsed, "outputs": outputs,
-        "numba_threads": get_num_threads(), "numba_threading_layer": threading_layer(),
+        "outputs": [details], "numba_threads": get_num_threads(),
+        "numba_threading_layer": threading_layer(),
     }
-    Path(job["output"]).write_text(json.dumps(result, indent=2) + "\n")
-
-
-if __name__ == "__main__":
-    main()
+    benchmark.extra_info.update(
+        dataset=job["dataset"], method=job["case"]["id"], scope=job["scope"],
+        batch_size=cfg["batch_size"], read_threads=cfg["read_threads"],
+        worker=result,
+    )
+    if "output" in job:
+        Path(job["output"]).write_text(json.dumps(result, indent=2) + "\n")
