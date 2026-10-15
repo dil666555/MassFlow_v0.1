@@ -1,6 +1,6 @@
 """Paper-ready composite MassFlow benchmark figure.
 
-Generates one five-panel figure:
+Generates a composite figure and separate a–c and d figures:
   a) internal implementation speedup
   b) Cardinal full-pipeline runtime ratio
   c) Cardinal full-pipeline peak-memory ratio
@@ -22,7 +22,6 @@ os.environ.setdefault(
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 import matplotlib.text as mtext
 import matplotlib.pyplot as plt
@@ -90,10 +89,13 @@ IDEAL_COLOR = "#B8B8B8"
 METHOD_LABEL_SIZE = 8.3
 TICK_LABEL_SIZE = 7.2
 AXIS_LABEL_SIZE = 8.2
+RATIO_AXIS_LABEL_SIZE = 10.5
 STAGE_TITLE_SIZE = 9.5
-PANEL_LABEL_SIZE = 11.0
+STAGE_TITLE_PAD = 12.0
+PANEL_LABEL_SIZE = 14.0
+BAR_LABEL_SIZE = 8.0
 LEGEND_LABEL_SIZE = 8.1
-PARALLEL_LEGEND_SIZE = 6.0
+PARALLEL_LEGEND_SIZE = 7.0
 ROW_LABEL_X = 0.018
 ROW_LABEL_Y_OFFSET = 0.028
 
@@ -200,6 +202,25 @@ def log_tick_formatter(value, _pos):
     return f"{value:.1f}"
 
 
+def annotate_highest_bar(ax):
+    bar = max(ax.patches, key=lambda patch: patch.get_height())
+    height = bar.get_height()
+    annotation = ax.annotate(
+        f"{height:.2f}x",
+        xy=(bar.get_x() + bar.get_width() / 2, height),
+        xytext=(0, 3),
+        textcoords="offset points",
+        fontsize=BAR_LABEL_SIZE,
+        ha="center",
+        va="bottom",
+    )
+    bbox = annotation.get_window_extent(ax.figure.canvas.get_renderer())
+    if bbox.x0 < ax.bbox.x0:
+        annotation.set_horizontalalignment("left")
+    elif bbox.x1 > ax.bbox.x1:
+        annotation.set_horizontalalignment("right")
+
+
 def save_figure(fig, stem, output_dir=OUT):
     os.makedirs(output_dir, exist_ok=True)
     for ext, kwargs in [
@@ -229,10 +250,11 @@ def draw_stage_ratio_panel(
     stages=STAGE_ORDER,
     stage_methods=STAGE_METHODS,
     hide_missing_labels=True,
+    ylabel_size=RATIO_AXIS_LABEL_SIZE,
 ):
     values = ratio_values(data, stages, stage_methods, datasets)
     ymin = min(0.7, values.min() * 0.78)
-    ymax = values.max() * 1.45
+    ymax = values.max() * 2.0
     inner = outer_spec.subgridspec(
         1,
         len(stages),
@@ -285,13 +307,14 @@ def draw_stage_ratio_panel(
                 tick.tick1line.set_visible(False)
                 tick.tick2line.set_visible(False)
                 tick_label.set_visible(False)
-        ax.set_title(STAGE_SHORT.get(stage, stage), fontsize=STAGE_TITLE_SIZE, pad=2.5)
+        ax.set_title(STAGE_SHORT.get(stage, stage), fontsize=STAGE_TITLE_SIZE, pad=STAGE_TITLE_PAD)
+        annotate_highest_bar(ax)
         ax.grid(axis="y", color=GRID_COLOR, lw=0.45, zorder=0)
         ax.tick_params(axis="x", labelsize=METHOD_LABEL_SIZE, pad=1.6)
         ax.tick_params(axis="y", labelsize=TICK_LABEL_SIZE, pad=1.6)
 
         if col == 0:
-            ax.set_ylabel(ylabel, fontsize=AXIS_LABEL_SIZE)
+            ax.set_ylabel(ylabel, fontsize=ylabel_size)
         else:
             ax.set_yticklabels([])
             ax.tick_params(axis="y", length=0)
@@ -353,13 +376,14 @@ def draw_m2aia_panel(fig, outer_spec):
                 tick.tick1line.set_visible(False)
                 tick.tick2line.set_visible(False)
                 tick_label.set_visible(False)
-        ax.set_title(STAGE_SHORT[stage], fontsize=STAGE_TITLE_SIZE, pad=2.5)
+        ax.set_title(STAGE_SHORT[stage], fontsize=STAGE_TITLE_SIZE, pad=STAGE_TITLE_PAD)
+        annotate_highest_bar(ax)
         ax.grid(axis="y", color=GRID_COLOR, lw=0.45, zorder=0)
         ax.tick_params(axis="x", labelsize=METHOD_LABEL_SIZE, pad=1.6)
         ax.tick_params(axis="y", labelsize=TICK_LABEL_SIZE, pad=1.6)
 
         if col == 0:
-            ax.set_ylabel("Runtime ratio (x)", fontsize=AXIS_LABEL_SIZE)
+            ax.set_ylabel("Runtime ratio (x)", fontsize=RATIO_AXIS_LABEL_SIZE)
         else:
             ax.set_yticklabels([])
             ax.tick_params(axis="y", length=0)
@@ -424,16 +448,16 @@ def draw_parallel_panel(fig, time_spec, speed_spec):
 
     ax_time.set_yscale("log")
     ax_time.yaxis.set_minor_locator(mticker.NullLocator())
-    ax_time.set_ylabel("Time (s)", fontsize=AXIS_LABEL_SIZE)
-    ax_time.set_title("Execution time", fontsize=STAGE_TITLE_SIZE, pad=2.5)
+    ax_time.set_ylabel("Time (s)", fontsize=RATIO_AXIS_LABEL_SIZE)
+    ax_time.set_title("Execution time", fontsize=STAGE_TITLE_SIZE, pad=STAGE_TITLE_PAD)
 
     ax_speed.set_yscale("log", base=2)
     ax_speed.set_yticks([1, 2, 4, 8, 16, 32])
     ax_speed.yaxis.set_major_formatter(mticker.ScalarFormatter())
     ax_speed.yaxis.set_minor_locator(mticker.NullLocator())
     ax_speed.set_ylim(0.8, 40)
-    ax_speed.set_ylabel("Speedup (x)", fontsize=AXIS_LABEL_SIZE)
-    ax_speed.set_title("Parallel speedup", fontsize=STAGE_TITLE_SIZE, pad=2.5)
+    ax_speed.set_ylabel("Speedup (x)", fontsize=RATIO_AXIS_LABEL_SIZE)
+    ax_speed.set_title("Parallel speedup", fontsize=STAGE_TITLE_SIZE, pad=STAGE_TITLE_PAD)
 
     add_panel_label(ax_time, "e", x=-0.16, y=1.20)
     return ax_time, ax_speed
@@ -455,30 +479,20 @@ def make_paper_figure():
         bottom=0.075,
         hspace=0.56,
     )
-    draw_stage_ratio_panel(
-        fig,
-        outer[0, 0],
-        INTERNAL_TIME,
-        CARDINAL_DATASETS,
-        "a",
-        "Speedup ratio (x)",
-    )
-    draw_stage_ratio_panel(
-        fig,
-        outer[1, 0],
-        CARDINAL_TIME,
-        CARDINAL_DATASETS,
-        "b",
-        "Runtime ratio (x)",
-    )
-    draw_stage_ratio_panel(
-        fig,
-        outer[2, 0],
-        CARDINAL_MEM,
-        CARDINAL_DATASETS,
-        "c",
-        "Memory ratio (x)",
-    )
+    for row, (data, label, ylabel, ylabel_size) in enumerate([
+        (INTERNAL_TIME, "a", "Speedup ratio", RATIO_AXIS_LABEL_SIZE),
+        (CARDINAL_TIME, "b", "Runtime ratio (x)", RATIO_AXIS_LABEL_SIZE),
+        (CARDINAL_MEM, "c", "Memory ratio", RATIO_AXIS_LABEL_SIZE),
+    ]):
+        draw_stage_ratio_panel(
+            fig,
+            outer[row, 0],
+            data,
+            CARDINAL_DATASETS,
+            label,
+            ylabel,
+            ylabel_size=ylabel_size,
+        )
 
     bottom = outer[3, 0].subgridspec(
         1,
@@ -488,7 +502,7 @@ def make_paper_figure():
     )
     draw_m2aia_panel(fig, bottom[0, :2])
     parallel = bottom[0, 2:].subgridspec(1, 2, wspace=0.32)
-    ax_time, ax_speed = draw_parallel_panel(fig, parallel[0, 0], parallel[0, 1])
+    _ax_time, ax_speed = draw_parallel_panel(fig, parallel[0, 0], parallel[0, 1])
 
     cardinal_handles = [
         mpatches.Patch(facecolor=color, edgecolor="white", label=label)
@@ -504,28 +518,97 @@ def make_paper_figure():
         handletextpad=0.35,
         columnspacing=1.0,
     )
-    stage_handles = [
-        mlines.Line2D(
-            [],
-            [],
-            color=PARALLEL_COLORS[idx],
-            marker=PARALLEL_MARKERS[idx],
-            markersize=3.0,
-            linewidth=1.0,
-            markeredgecolor="white",
-            markeredgewidth=0.35,
-            label=PARALLEL_STAGE_SHORT[stage],
-        )
-        for idx, stage in enumerate(PARALLEL_STAGE_ORDER)
-    ]
-    stage_handles.append(mlines.Line2D([], [], color=IDEAL_COLOR, lw=0.8, ls="--", label="Ideal"))
     ax_speed.legend(
-        handles=stage_handles,
         loc="upper left",
         fontsize=PARALLEL_LEGEND_SIZE,
         handlelength=1.15,
         labelspacing=0.24,
         borderpad=0.2,
+    )
+    return fig
+
+
+def make_abc_figure():
+    configure_style()
+    fig = plt.figure(figsize=(7.2, 6.25))
+    outer = fig.add_gridspec(
+        3,
+        1,
+        left=0.078,
+        right=0.99,
+        top=0.90,
+        bottom=0.075,
+        hspace=0.56,
+    )
+    draw_stage_ratio_panel(
+        fig,
+        outer[0, 0],
+        INTERNAL_TIME,
+        CARDINAL_DATASETS,
+        "a",
+        "Speedup ratio",
+        ylabel_size=RATIO_AXIS_LABEL_SIZE,
+    )
+    draw_stage_ratio_panel(
+        fig,
+        outer[1, 0],
+        CARDINAL_TIME,
+        CARDINAL_DATASETS,
+        "b",
+        "Runtime ratio (x)",
+    )
+    draw_stage_ratio_panel(
+        fig,
+        outer[2, 0],
+        CARDINAL_MEM,
+        CARDINAL_DATASETS,
+        "c",
+        "Memory ratio",
+        ylabel_size=RATIO_AXIS_LABEL_SIZE,
+    )
+
+    cardinal_handles = [
+        mpatches.Patch(facecolor=color, edgecolor="white", label=label)
+        for color, label in zip(DATASET_COLORS, CARDINAL_DATASET_LABELS)
+    ]
+    fig.legend(
+        handles=cardinal_handles,
+        loc="upper left",
+        bbox_to_anchor=(0.40, 0.992),
+        ncol=len(cardinal_handles),
+        fontsize=LEGEND_LABEL_SIZE,
+        handlelength=1.0,
+        handletextpad=0.35,
+        columnspacing=1.0,
+    )
+    return fig
+
+
+def make_d_figure():
+    configure_style()
+    fig = plt.figure(figsize=(3.4, 2.25))
+    outer = fig.add_gridspec(
+        1,
+        1,
+        left=0.18,
+        right=0.98,
+        top=0.78,
+        bottom=0.18,
+    )
+    draw_m2aia_panel(fig, outer[0, 0])
+    m2aia_handles = [
+        mpatches.Patch(facecolor=color, edgecolor="white", label=label)
+        for color, label in zip(DATASET_COLORS, M2AIA_DATASET_LABELS)
+    ]
+    fig.legend(
+        handles=m2aia_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.58, 0.995),
+        ncol=len(m2aia_handles),
+        fontsize=LEGEND_LABEL_SIZE,
+        handlelength=1.0,
+        handletextpad=0.35,
+        columnspacing=0.85,
     )
     return fig
 
@@ -536,6 +619,18 @@ def main():
     hide_all_text(fig)
     save_figure(fig, "fig_paper_benchmark_notext")
     plt.close(fig)
+
+    abc_fig = make_abc_figure()
+    save_figure(abc_fig, "fig_paper_benchmark_abc")
+    hide_all_text(abc_fig)
+    save_figure(abc_fig, "fig_paper_benchmark_abc_notext")
+    plt.close(abc_fig)
+
+    d_fig = make_d_figure()
+    save_figure(d_fig, "fig_paper_benchmark_d")
+    hide_all_text(d_fig)
+    save_figure(d_fig, "fig_paper_benchmark_d_notext")
+    plt.close(d_fig)
     print("Saved paper benchmark figure to", OUT)
 
 
