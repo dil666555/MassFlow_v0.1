@@ -1,0 +1,31 @@
+{
+  "rounds": 2,
+  "warmup": 1,
+  "batch_size": 256,
+  "read_threads": 8,
+  "numba_threads": 4,
+  "cardinal_workers": 1,
+  "rss_interval_seconds": 0.005,
+  "datasets": {
+    "min": "/Users/dre/Desktop/data/min/file_min_profile.imzML",
+    "mid": "/Users/dre/Desktop/data/mid/file_mid_profile.imzML",
+    "max": "/Users/dre/Desktop/data/example/example.imzML",
+    "ultra": "/Users/dre/Desktop/data/original/original.imzML"
+  },
+  "cases": [
+    {"id": "locmin", "stage": "baseline", "python": {"method": "locmin", "width": 5, "smooth": "none", "span": 0.1, "upper": false}, "numba": {"method": "locmin_numba", "width": 5, "smooth": "none", "span": 0.1, "upper": false}, "cardinal": {"method": "locmin", "smooth": "none", "span": 0.1, "upper": false}},
+    {"id": "snip", "stage": "baseline", "python": {"method": "snip", "m": 5, "decreasing": true, "smooth": "none"}, "numba": {"method": "snip_numba", "m": 5, "decreasing": true, "smooth": "none"}, "cardinal": {"method": "snip", "width": 5, "decreasing": true}},
+    {"id": "tic", "stage": "normalization", "python": {"method": "tic", "scale": 1.0}, "numba": {"method": "tic_numba", "scale": 1.0}, "cardinal": {"method": "tic", "scale": 1.0}},
+    {"id": "rms", "stage": "normalization", "python": {"method": "rms", "scale": 1.0}, "numba": {"method": "rms_numba", "scale": 1.0}, "cardinal": {"method": "rms", "scale": 1.0}},
+    {"id": "reference", "stage": "normalization", "numba": {"method": "ref_numba", "scale": 1.0}, "cardinal": {"method": "reference", "scale": 1.0}},
+    {"id": "ma", "stage": "noise", "python": {"method": "ma", "window": 5}, "numba": {"method": "ma_numba", "window": 5}, "cardinal": {"method": "ma", "width": 5}},
+    {"id": "gaussian", "stage": "noise", "python": {"method": "gaussian", "window": 5, "sd": 1.25}, "numba": {"method": "gaussian_numba", "window": 5, "sd": 1.25}, "cardinal": {"method": "gaussian", "width": 5, "sd": 1.25}},
+    {"id": "savgol", "stage": "noise", "python": {"method": "savgol", "window": 5, "polyorder": 3, "deriv": 0, "delta": 1.0}, "numba": {"method": "savgol_numba", "window": 5, "polyorder": 3, "deriv": 0, "delta": 1.0}, "cardinal": {"method": "sgolay", "width": 5, "order": 3, "deriv": 0, "delta": 1.0}},
+    {"id": "quantile", "stage": "pick", "numba": {"method": "quantile", "width": 5, "snr": 2.0, "return_type": "height", "nbins": 1, "overlap": 0.5}, "cardinal": {"method": "quantile", "width": 5, "SNR": 2.0, "type": "height", "nbins": 1, "overlap": 0.5}},
+    {"id": "diff", "stage": "pick", "numba": {"method": "diff", "width": 5, "snr": 2.0, "return_type": "height", "nbins": 1, "overlap": 0.5}, "cardinal": {"method": "diff", "width": 5, "SNR": 2.0, "type": "height", "nbins": 1, "overlap": 0.5}},
+    {"id": "sd", "stage": "pick", "numba": {"method": "sd", "width": 5, "snr": 2.0, "return_type": "height", "nbins": 1, "overlap": 0.5}, "cardinal": {"method": "sd", "width": 5, "SNR": 2.0, "type": "height", "nbins": 1, "overlap": 0.5}},
+    {"id": "mad", "stage": "pick", "numba": {"method": "mad", "width": 5, "snr": 2.0, "return_type": "height", "nbins": 1, "overlap": 0.5}, "cardinal": {"method": "mad", "width": 5, "SNR": 2.0, "type": "height", "nbins": 1, "overlap": 0.5}},
+    {"id": "align", "stage": "align", "python": {"units": "ppm", "binfun": "min", "binratio": 2.0}, "numba": {"units": "ppm", "binfun": "min", "binratio": 2.0}, "cardinal": {"units": "ppm", "binfun": "min", "binratio": 2.0}},
+    {"id": "origin", "stage": "pick", "python": {"method": "origin", "width": 2, "relheight": 0.012, "snr": 2.0, "return_type": "height", "use_numba": true}}
+  ]
+}
