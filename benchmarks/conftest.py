@@ -17,7 +17,7 @@ os.environ["NUMBA_NUM_THREADS"] = str(CONFIG["numba_threads"])
 
 def pytest_addoption(parser):
     group = parser.getgroup("massflow-benchmarks")
-    group.addoption("--bench-group", choices=("python-core", "numba-pipeline", "numba-core"))
+    group.addoption("--bench-group", choices=("python-core", "numba-pipeline", "numba-core", "python-pipeline"))
     group.addoption("--bench-run-dir", default=str(HERE / "results" / "current"))
     group.addoption("--bench-case", action="append", choices=[c["id"] for c in CONFIG["cases"]])
     group.addoption("--bench-dataset", action="append", choices=DATASETS)
@@ -43,10 +43,6 @@ def pytest_generate_tests(metafunc):
         if not cases:
             raise pytest.UsageError(f"No supported cases for {group}: {selected}")
         datasets = metafunc.config.getoption("bench_dataset") or DATASETS
-        if group == "numba-core":
-            datasets = [ds for ds in datasets if ds in ("min", "mid")]
-            if not datasets:
-                raise pytest.UsageError("Numba core only measures Min/Mid; Max/Ultra reuse pipeline results")
         jobs = {}
         for ds in datasets:
             for case in cases:

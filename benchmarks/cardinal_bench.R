@@ -5,10 +5,14 @@ suppressPackageStartupMessages(library(jsonlite))
 args <- commandArgs(trailingOnly = TRUE)
 versions <- function() {
     pkgs <- c("Cardinal", "CardinalIO", "matter", "BiocParallel", "jsonlite")
-    bp <- BiocParallel::bpparam()
+    bp <- getCardinalBPPARAM()
+    registered <- BiocParallel::bpparam()
     list(R = R.version.string, packages = setNames(
         lapply(pkgs, function(p) as.character(packageVersion(p))), pkgs
-    ), parallel_backend = class(bp)[[1]], workers = BiocParallel::bpworkers(bp))
+    ), parallel_backend = if (is.null(bp)) "serial (BPPARAM=NULL)" else class(bp)[[1]],
+    workers = if (is.null(bp)) 1L else BiocParallel::bpworkers(bp),
+    registered_backend = class(registered)[[1]], registered_workers = BiocParallel::bpworkers(registered),
+    vector_heap_limit_mib = mem.maxVSize())
 }
 if (identical(args, "--probe")) {
     cat(toJSON(versions(), auto_unbox = TRUE), "\n")

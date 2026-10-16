@@ -14,6 +14,7 @@ from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
 from massflow.preprocess.preprocessor import Preprocessor
 from massflow.tools.dm_process import dm_process
 from peak_align_numpy import compute_reference
+from peak_align_numba_stream import reference_computer_stream
 
 BATCH_FUNCTIONS = {
     "baseline": BatchPreprocess.baseline_correction_batch,
@@ -157,6 +158,52 @@ def run_core(job, dm, batches):
     return details
 
 
+# ---------------------------------------------------------------------------
+# Max/Ultra: stream input and compute, without result writing or full caching
+# ---------------------------------------------------------------------------
+class StreamingFlatBatches:
+    """Re-iterable flat input for the reference builder's two read passes."""
+
+    def __init__(self, dm, size):
+        self.dm = dm
+        self.size = size
+
+    def __iter__(self):
+        for mz, intensity, lengths, _ in self.dm.flat_generator(batch_size=self.size, include_mz=True):
+            yield mz, intensity, lengths
+
+
+def run_read_compute(job, dm):
+    kwargs = parameters(job)
+    stage = job["case"]["stage"]
+    size = job["config"]["batch_size"]
+    details = {}
+    if stage == "align":
+        if job["backend"] == "python":
+            reference, tolerance = compute_reference(dm, **kwargs, clear_memory=True, batch_size=size)
+        else:
+            reference, tolerance = reference_computer_stream(
+                StreamingFlatBatches(dm, size), len(dm.ms), **kwargs,
+            )
+        details = {"reference_length": len(reference), "tolerance_relative": tolerance}
+        kwargs = dict(reference=reference, tolerance=tolerance, units="relative")
+
+    count = 0
+    if job["backend"] == "python":
+        for batch in dm.batch_generator(batch_size=size):
+            result = BATCH_FUNCTIONS[stage](batch_spectra=batch, **kwargs)
+            count += len(batch)
+            del result
+            dm.clear_batch_data_memory(batch)
+    else:
+        include_mz = stage in ("align", "pick") or job["case"]["id"] == "reference"
+        for mz, intensity, lengths, _ in dm.flat_generator(batch_size=size, include_mz=include_mz):
+            result = FLAT_FUNCTIONS[stage](mz_data=mz, intensity=intensity, lengths=lengths, **kwargs)
+            count += len(lengths)
+            del result
+    return dict(details, spectra_processed=count)
+
+
 def memory_marker(job, name, round_number):
     control = Path(job["control"])
     (control / f"{name}-{round_number}").touch()
@@ -177,7 +224,7 @@ def prepared_input(job):
         else:
             dm = open_input(job, cache_stack)
             batches = None
-            if job["backend"] == "numba" and job["case"]["id"] == "align":
+            if job["scope"] == "pipeline" and job["backend"] == "numba" and job["case"]["id"] == "align":
                 # Match the original flat_caches fixture on picked spectra.
                 batches = [(mz, intensity, lengths)
                            for mz, intensity, lengths, _ in dm.flat_generator(
@@ -193,6 +240,8 @@ def test_operator(benchmark, job, prepared_input):
     def target():
         if job["scope"] == "cache_core":
             return run_core(job, dm, batches)
+        if job["scope"] == "read_compute":
+            return run_read_compute(job, dm)
         with ExitStack() as stack:
             _, _, details = run_pipeline(job, stack, job["scratch"], dm, batches)
         # As in the original memory.py targets, output close is inside timing.
@@ -218,6 +267,8 @@ def test_operator(benchmark, job, prepared_input):
         timed_target, rounds=cfg["rounds"], iterations=1,
         warmup_rounds=cfg["warmup"],
     )
+    if job["scope"] == "read_compute" and details["spectra_processed"] != job["expected_spectra"]:
+        raise ValueError("Read/compute did not process every input spectrum")
     result = {
         "outputs": [details], "numba_threads": get_num_threads(),
         "numba_threading_layer": threading_layer(),

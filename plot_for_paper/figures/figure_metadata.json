@@ -1,0 +1,17 @@
+{
+  "campaign_id": "20261015T175144Z",
+  "run_dir": "/Users/dre/Desktop/dre/massflow-essay/MassFlow_v0.1/benchmarks/results/current",
+  "source_rows": 148,
+  "technical_repeats": 2,
+  "center": "ratio of two arithmetic means",
+  "error_bars": "none",
+  "styles": "original a\u2013c figure constants, helpers and layout",
+  "qa": {
+    "axes": 15,
+    "bars": 148,
+    "texts_outside_canvas": [],
+    "svg_text": "editable",
+    "pdf_fonttype": 42,
+    "preview_dpi": 600
+  }
+}

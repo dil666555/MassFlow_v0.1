@@ -1,0 +1,19 @@
+{
+  "campaigns": {
+    "min_mid": "20261015T175144Z",
+    "max_ultra": "20261016T034418Z"
+  },
+  "source_rows": 44,
+  "technical_repeats": 2,
+  "center": "Python arithmetic mean / Numba arithmetic mean",
+  "error_bars": "none",
+  "styles": "original panel a drawing helper and constants",
+  "qa": {
+    "axes": 5,
+    "bars": 44,
+    "texts_outside_canvas": [],
+    "svg_text": "editable",
+    "pdf_fonttype": 42,
+    "preview_dpi": 600
+  }
+}

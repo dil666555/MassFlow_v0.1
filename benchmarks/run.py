@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HERE = ROOT / "benchmarks"
 GROUPS = ("python-core", "numba-pipeline", "numba-core", "cardinal-pipeline",
           "numba-memory", "cardinal-memory")
+EXTRA_GROUPS = ("python-pipeline",)
 DATASETS = ("min", "mid", "max", "ultra")
 
 
@@ -90,6 +91,8 @@ def inspect_input(path):
             "imzml_mtime_ns": path.stat().st_mtime_ns, "ibd_mtime_ns": ibd.stat().st_mtime_ns,
             "spectra": len(parser.coordinates),
             "intensity_points": sum(parser.intensityLengths),
+            "min_spectrum_points": min(parser.intensityLengths),
+            "max_spectrum_points": max(parser.intensityLengths),
             "mz_dtype": parser.mzPrecision, "intensity_dtype": parser.intensityPrecision,
             "reference": float(mz_axis[(length - 1) // 2]),
             "ref_tolerance": 0.1,
@@ -117,6 +120,8 @@ def initialize(run, cfg):
         "git_branch": command_output(["git", "branch", "--show-current"]),
         "git_dirty": bool(command_output(["git", "status", "--porcelain"])),
         "inputs": inputs,
+        "core_scopes": {"min": "cache_core", "mid": "cache_core",
+                        "max": "read_compute", "ultra": "read_compute"},
     }
     write_json(run / "manifest.json", manifest)
     print("Initialized", run)
@@ -135,7 +140,7 @@ def validate_campaign(run, cfg):
     return manifest
 
 
-def prepare(run, manifest, datasets, resume):
+def prepare(run, manifest, datasets, resume, alignment_source=None):
     from contextlib import ExitStack
     from python_bench import run_pipeline, output_info
     from massflow.preprocess.numba.numba_runtime import apply_numba_runtime
@@ -153,6 +158,24 @@ def prepare(run, manifest, datasets, resume):
                 continue
             raise FileExistsError(f"Already prepared: {ds}; add --resume.")
         target.mkdir(parents=True, exist_ok=True)
+        if alignment_source is not None:
+            old = read_json(alignment_source / "alignment" / ds / "prepared.json")
+            if (old["parameters"] != case["numba"]
+                    or any(manifest["inputs"][ds][key] != value for key, value in old["source"].items())):
+                raise ValueError(f"Prepared alignment parameters/input differ: {ds}")
+            file_identity(old["input"])
+            picked = dict(old["input"])
+            for kind, suffix, key in (("imzml", "imzML", "path"), ("ibd", "ibd", "ibd_path")):
+                output = target / f"input.{suffix}"
+                shutil.copyfile(old["input"][key], output)
+                picked[key] = str(output)
+                picked[f"{kind}_bytes"] = output.stat().st_size
+                picked[f"{kind}_mtime_ns"] = output.stat().st_mtime_ns
+            write_json(marker, {"campaign_id": manifest["id"], "input": picked,
+                                "source": manifest["inputs"][ds], "parameters": case["numba"],
+                                "prepared_source_campaign": old["campaign_id"]})
+            print("Reused validated alignment input", ds, flush=True)
+            continue
         job = {"backend": "numba", "case": case, "config": cfg,
                "input": manifest["inputs"][ds]["path"]}
         with tempfile.TemporaryDirectory(dir=target) as tmp, ExitStack() as stack:
@@ -245,9 +268,19 @@ def make_job(run, manifest, group, ds, case):
             raise ValueError(f"Wrong alignment input campaign for {ds}")
         info = prepared["input"]
         file_identity(info)
-    scope = "cache_core" if group.endswith("core") and ds in ("min", "mid") else "pipeline"
+    scope = (manifest["core_scopes"][ds] if group.endswith("core")
+             else "pipeline")
     if backend == "cardinal":
         scope = "cardinal_process"
+    if case["id"] == "snip":
+        if not (case["python"]["m"] == case["numba"]["m"] == case["cardinal"]["width"] == 5
+                and case["python"]["decreasing"] is True
+                and case["numba"]["decreasing"] is True
+                and case["cardinal"]["decreasing"] is True
+                and case["python"]["smooth"] == case["numba"]["smooth"] == "none"):
+            raise ValueError("SNIP retest requires m/width=5, decreasing=True and no smoothing in all backends.")
+        case = dict(case, python=dict(case["python"], baseline_scale=1.0),
+                    numba=dict(case["numba"], baseline_scale=1.0))
     return {
         "campaign_id": manifest["id"], "group": group,
         "save_path": str(run / group / f'{ds}-{case["id"]}.json'),
@@ -264,10 +297,6 @@ def run_group(run, manifest, group, datasets, case_ids, resume):
     backend = group.split("-", 1)[0]
     mode = "memory" if group.endswith("memory") else "time"
     cfg = manifest["config"]
-    if group == "numba-core":
-        datasets = [ds for ds in datasets if ds in ("min", "mid")]
-        if not datasets:
-            raise ValueError("Numba Max/Ultra core rows reuse numba-pipeline; no core run is needed.")
     selected = [c for c in cfg["cases"] if backend in c and (not case_ids or c["id"] in case_ids)]
     if not selected:
         raise ValueError(f"No supported cases for {backend}: {case_ids}")
@@ -325,7 +354,7 @@ def summarize_values(values):
 def summarize(run, manifest):
     lines = ["# Unified benchmark results", "",
              f'Campaign: `{manifest["id"]}`. Raw results and provenance are in this directory.', "",
-             "Max/Ultra core rows marked `pipeline_substitution` are pipeline measurements, not core timings.", ""]
+             "Core scopes are recorded per dataset; read_compute includes reading but no result writing.", ""]
     for group in GROUPS:
         rows = []
         backend = group.split("-", 1)[0]
@@ -333,7 +362,7 @@ def summarize(run, manifest):
             for case in manifest["config"]["cases"]:
                 if backend not in case:
                     continue
-                source_group = "numba-pipeline" if group == "numba-core" and ds in ("max", "ultra") else group
+                source_group = group
                 path = run / source_group / f'{ds}-{case["id"]}.json'
                 if not path.exists():
                     raise FileNotFoundError(f"Missing result: {path}. Finish all six campaigns (use --resume).")
@@ -341,8 +370,6 @@ def summarize(run, manifest):
                 if r["campaign_id"] != manifest["id"]:
                     raise ValueError(f"Campaign mismatch: {path}")
                 scope = r["scope"]
-                if group.endswith("core") and ds in ("max", "ultra"):
-                    scope = "pipeline_substitution"
                 rows.append({"dataset": ds, "case": case["id"], "scope": scope,
                              "unit": "MiB" if r["mode"] == "memory" else "s",
                              **{k: v for k, v in r["stats"].items() if k != "data"},
@@ -361,11 +388,13 @@ def summarize(run, manifest):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init", "prepare", *GROUPS, "summarize"))
+    parser.add_argument("command", choices=("init", "prepare", *GROUPS, *EXTRA_GROUPS, "summarize"))
     parser.add_argument("--run-dir", type=Path, default=HERE / "results" / "current")
     parser.add_argument("--dataset", nargs="+", choices=DATASETS, default=list(DATASETS))
     parser.add_argument("--case", nargs="+", choices=[c["id"] for c in read_json(HERE / "config.json")["cases"]])
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--alignment-source", type=Path,
+                        help="For prepare: copy validated picked input from an existing campaign")
     args = parser.parse_args()
     cfg = read_json(HERE / "config.json")
     # Set before importing NumPy/Numba/R so BLAS never adds uncontrolled workers.
@@ -378,7 +407,8 @@ def main():
         return
     manifest = validate_campaign(run, cfg)
     if args.command == "prepare":
-        prepare(run, manifest, args.dataset, args.resume)
+        prepare(run, manifest, args.dataset, args.resume,
+                args.alignment_source.resolve() if args.alignment_source is not None else None)
     elif args.command == "summarize":
         summarize(run, manifest)
     else:
